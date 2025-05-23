@@ -1,0 +1,21 @@
+{
+  "name": "multiplayer-vibecode",
+  "version": "1.0.0",
+  "description": "Multiplayer 3D chat with Three.js",
+  "main": "server/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "nodemon server/server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1",
+    "sqlite3": "^5.1.7",
+    "three": "^0.163.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
