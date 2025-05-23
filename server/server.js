@@ -69,19 +69,28 @@ const players = new Map();
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
   
-  // Add player to the players map
-  players.set(socket.id, {
+  // Create player data
+  const newPlayer = {
     id: socket.id,
     username: `Player-${socket.id.substring(0, 4)}`,
     position: { x: 0, y: 0, z: 0 },
     color: Math.random() * 0xffffff // Random color for each player
-  });
+  };
   
-  // Emit current player list to the new client
-  socket.emit('players list', Array.from(players.values()));
+  // Add player to the players map
+  players.set(socket.id, newPlayer);
+  
+  // Emit other players list to the new client (excluding the new player)
+  const otherPlayers = Array.from(players.values()).filter(player => player.id !== socket.id);
+  socket.emit('players list', otherPlayers);
+  
+  // Emit the new player to itself through the player-joined event
+  // This ensures the local player is created with isLocalPlayer = true
+  socket.emit('player joined', newPlayer);
   
   // Notify other clients about the new player
-  socket.broadcast.emit('player joined', players.get(socket.id));
+  // Using socket.broadcast.emit ensures this only goes to other clients, not the sender
+  socket.broadcast.emit('player joined', newPlayer);
   
   // Update user count for all clients
   io.emit('user count', players.size);
@@ -176,8 +185,31 @@ httpServer.listen(PORT, () => {
 // Handle process termination gracefully
 process.on('SIGINT', () => {
   console.log('Shutting down server...');
-  httpServer.close(() => {
-    console.log('Server shut down');
-    process.exit(0);
+  
+  // Close all socket connections
+  io.close(() => {
+    console.log('Socket.io connections closed');
+    
+    // Close the HTTP server
+    httpServer.close(() => {
+      console.log('HTTP server closed');
+      
+      // Close the database connection
+      if (db) {
+        try {
+          db.close();
+          console.log('Database connection closed');
+        } catch (err) {
+          console.error('Error closing database:', err);
+        }
+      }
+      
+      console.log('Server shut down successfully');
+      // Force exit after a timeout in case something is still hanging
+      setTimeout(() => {
+        console.log('Forcing process exit');
+        process.exit(0);
+      }, 1000);
+    });
   });
 });

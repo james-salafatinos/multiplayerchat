@@ -94,7 +94,7 @@ export class ChatBubbleSystem extends System {
                             message: data.content,
                             username: data.username,
                             timestamp: Date.now(),
-                            duration: 2, // 2 seconds display time
+                            duration: 4, // 2 seconds display time
                             isVisible: true
                         });
                         entity.addComponent(chatComponent);
@@ -124,7 +124,7 @@ export class ChatBubbleSystem extends System {
         bubble.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
         bubble.style.borderRadius = '5px';
         bubble.style.padding = '5px 10px';
-        bubble.style.maxWidth = '200px';
+        bubble.style.maxWidth = '500px';
         bubble.style.textAlign = 'center';
         bubble.style.transform = 'translate(-50%, -100%)';
         bubble.style.pointerEvents = 'none';
@@ -159,27 +159,41 @@ export class ChatBubbleSystem extends System {
             return;
         }
         
-        // Get screen position of entity
-        const position = new THREE.Vector3();
-        position.copy(transformComponent.position);
-        position.y += 1.5; // Position above player head
+        // Get the mesh from the entity to find its world position
+        const meshComponent = entity.getComponent('MeshComponent');
+        if (!meshComponent || !meshComponent.mesh) {
+            console.log('Entity has no mesh component or mesh');
+            return;
+        }
         
-        // Project 3D position to 2D screen coordinates
-        position.project(this.camera);
+        // Get the world position of the player mesh
+        // For a player, we want to position at the top of their head
+        const playerHeight = 1.0; // Assuming player height is 1.0 units
         
-        // Convert to CSS coordinates
-        const widthHalf = window.innerWidth / 2;
-        const heightHalf = window.innerHeight / 2;
-        const x = (position.x * widthHalf) + widthHalf;
-        const y = -(position.y * heightHalf) + heightHalf;
+        // Create a position vector at the top center of the player's head
+        const worldPos = new THREE.Vector3();
+        meshComponent.mesh.getWorldPosition(worldPos);
+        worldPos.y += playerHeight / 2 + 0.1; // Position at top of head plus small offset
         
-        console.log(`Updating chat bubble position to x:${x.toFixed(2)}, y:${y.toFixed(2)} for message: "${chatComponent.message}"`);
+        // Convert world position to screen position
+        // Using the renderer's coordinates for more accurate positioning
+        const tempV = worldPos.clone();
+        tempV.project(this.camera);
+        
+        // Get the renderer dimensions
+        const rendererSize = this.renderer.getSize(new THREE.Vector2());
+        
+        // Convert normalized device coordinates (-1 to +1) to pixel coordinates
+        const x = Math.round((0.5 + tempV.x / 2) * rendererSize.x);
+        const y = Math.round((0.5 - tempV.y / 2) * rendererSize.y);
+        
+        console.log(`Updating chat bubble position to x:${x}, y:${y} for message: "${chatComponent.message}"`);
         
         // Update element position
         chatComponent.element.style.left = `${x}px`;
         chatComponent.element.style.top = `${y}px`;
         
-        // Make sure the element is visible (might be hidden by CSS)
+        // Make sure the element is visible
         chatComponent.element.style.display = 'block';
         chatComponent.element.style.opacity = '1';
     }

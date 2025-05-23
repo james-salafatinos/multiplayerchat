@@ -76,17 +76,25 @@ document.addEventListener('DOMContentLoaded', () => {
         // Skip if we already have this player
         if (playerEntities.has(player.id)) return;
         
+        // Check if this is the local player
+        const isLocalPlayer = player.id === getLocalPlayerId();
+        
         // Create player entity
         const playerEntity = createPlayer(world, {
             playerId: player.id,
             username: player.username,
-            isLocalPlayer: false, // Never the local player
+            isLocalPlayer: isLocalPlayer, // Check if this is the local player
             color: player.color,
             position: player.position
         });
         
         // Store player entity in map
         playerEntities.set(player.id, playerEntity);
+        
+        // Log if this is the local player for debugging
+        if (isLocalPlayer) {
+            console.log('Created local player entity with ID:', player.id);
+        }
     });
     
     // Handle player left
