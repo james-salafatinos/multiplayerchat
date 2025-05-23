@@ -97,11 +97,12 @@ io.on('connection', (socket) => {
     // Save message to database
     const info = insertMessage.run(username, content);
     
-    // Broadcast message to all clients
+    // Broadcast message to all clients with player ID
     io.emit('chat message', {
       id: info.lastInsertRowid,
       username,
       content,
+      playerId: socket.id, // Include the player ID for chat bubbles
       timestamp: new Date().toISOString()
     });
   });

@@ -5,6 +5,7 @@ import { initChat } from './chat.js';
 import { World } from './ecs/core.js';
 import { createCube, createGround, createPlayer } from './ecs/entities.js';
 import { RenderSystem, RotationSystem, MovementSystem } from './ecs/systems.js';
+import { ChatBubbleSystem } from './ecs/chatBubbleSystem.js';
 
 // Initialize the ECS world
 const world = new World();
@@ -35,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
     world.registerSystem(new RenderSystem(scene));
     world.registerSystem(new RotationSystem(socket));
     world.registerSystem(new MovementSystem(socket));
+    world.registerSystem(new ChatBubbleSystem(scene));
     
     // Set up camera position for better view
     const camera = getCamera();

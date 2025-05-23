@@ -30,6 +30,16 @@ export function initChat(socket) {
     // Handle received chat messages
     socket.on('chat message', (message) => {
         addMessageToChat(message);
+        
+        // Dispatch event for chat bubble system if message has playerId
+        if (message.playerId) {
+            console.log('Dispatching player-chat-message event:', message);
+            document.dispatchEvent(new CustomEvent('player-chat-message', { 
+                detail: message 
+            }));
+        } else {
+            console.warn('Chat message missing playerId, cannot create chat bubble:', message);
+        }
     });
     
     // Handle chat history from server
