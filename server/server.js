@@ -62,9 +62,29 @@ db.exec(`
 const insertMessage = db.prepare('INSERT INTO messages (username, content) VALUES (?, ?)');
 const getRecentMessages = db.prepare('SELECT * FROM messages ORDER BY timestamp DESC LIMIT 50');
 
+// Track connected players
+const players = new Map();
+
 // Socket.io connection handling
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
+  
+  // Add player to the players map
+  players.set(socket.id, {
+    id: socket.id,
+    username: `Player-${socket.id.substring(0, 4)}`,
+    position: { x: 0, y: 0, z: 0 },
+    color: Math.random() * 0xffffff // Random color for each player
+  });
+  
+  // Emit current player list to the new client
+  socket.emit('players list', Array.from(players.values()));
+  
+  // Notify other clients about the new player
+  socket.broadcast.emit('player joined', players.get(socket.id));
+  
+  // Update user count for all clients
+  io.emit('user count', players.size);
   
   // Send recent chat history to newly connected client
   const recentMessages = getRecentMessages.all().reverse();
@@ -92,9 +112,56 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('update rotation', rotation);
   });
   
+  // Handle player position updates
+  socket.on('update position', (data) => {
+    console.log('Received position update from client:', socket.id, data);
+    
+    // Update player data in the players map
+    const player = players.get(socket.id);
+    if (player) {
+      // Update position if provided
+      if (data.position) {
+        player.position = data.position;
+        console.log('Updated player position to:', data.position);
+      }
+      
+      // Update rotation if provided
+      if (data.rotation) {
+        player.rotation = data.rotation;
+        console.log('Updated player rotation to:', data.rotation);
+      }
+      
+      // Update target position if provided
+      if (data.targetPosition) {
+        player.targetPosition = data.targetPosition;
+        console.log('Updated player target position to:', data.targetPosition);
+      }
+      
+      // Add playerId to the data if not already present
+      if (!data.playerId) {
+        data.playerId = socket.id;
+      }
+      
+      // Broadcast the position update to all other clients
+      console.log('Broadcasting player position to other clients:', data);
+      socket.broadcast.emit('player position', data);
+    } else {
+      console.error('Player not found in players map:', socket.id);
+    }
+  });
+  
   // Handle disconnection
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
+    
+    // Remove player from players map
+    players.delete(socket.id);
+    
+    // Notify other clients about the player leaving
+    socket.broadcast.emit('player left', { playerId: socket.id });
+    
+    // Update user count for all clients
+    io.emit('user count', players.size);
   });
 });
 
