@@ -15,6 +15,8 @@ export function initNetwork() {
     socket.on('connect', () => {
         console.log('Connected to server with ID:', socket.id);
         localPlayerId = socket.id;
+        console.log(`[Network.js] Dispatching 'local-player-id-assigned' for ID: ${localPlayerId}`);
+        document.dispatchEvent(new CustomEvent('local-player-id-assigned', { detail: { playerId: localPlayerId } }));
     });
     
     // Handle user count updates
@@ -47,6 +49,7 @@ export function initNetwork() {
         }));
     });
     
+    
     // Handle new player joined
     socket.on('player joined', (player) => {
         // This will be handled by the app.js to create a new player entity
@@ -67,6 +70,56 @@ export function initNetwork() {
     socket.on('disconnect', () => {
         console.log('Disconnected from server');
         localPlayerId = null;
+    });
+
+    // Handle initial player inventory
+    socket.on('player inventory', (inventoryData) => {
+        console.log('Received player inventory:', inventoryData);
+        document.dispatchEvent(new CustomEvent('player-inventory-update', {
+            detail: inventoryData
+        }));
+    });
+
+    // Handle initial world items state
+    socket.on('world items state', (items) => {
+        console.log('Received world items state:', items);
+        document.dispatchEvent(new CustomEvent('world-items-state-update', {
+            detail: items
+        }));
+    });
+
+    // Handle inventory updates (e.g., after pickup, drop, move)
+    socket.on('inventory update', (updateData) => {
+        console.log('Received inventory update:', updateData);
+        document.dispatchEvent(new CustomEvent('local-inventory-changed', {
+            detail: updateData
+        }));
+    });
+
+    // Handle item removed from world
+    socket.on('item removed', (itemUuid) => {
+        console.log('Received item removed from world:', itemUuid);
+        document.dispatchEvent(new CustomEvent('world-item-removed', {
+            detail: { uuid: itemUuid }
+        }));
+    });
+
+    // Handle item added to world
+    socket.on('item added', (itemData) => {
+        console.log('Received item added to world:', itemData);
+        document.dispatchEvent(new CustomEvent('world-item-added', {
+            detail: itemData
+        }));
+    });
+
+    // Handle inventory errors
+    socket.on('inventory error', (errorData) => {
+        console.error('Received inventory error:', errorData);
+        document.dispatchEvent(new CustomEvent('inventory-operation-error', {
+            detail: errorData
+        }));
+        // Basic alert for now, can be improved with a proper UI notification system
+        alert(`Inventory Error: ${errorData.message}`);
     });
     
     return socket;

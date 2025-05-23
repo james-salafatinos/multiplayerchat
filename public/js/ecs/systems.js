@@ -60,6 +60,19 @@ export class RenderSystem extends System {
      * @param {World} world - The world this system belongs to
      */
     update(world) {
+        // Check for deactivated entities with meshes and remove them from the scene
+        for (const entity of world.entities) {
+            if (!entity.active && entity.hasComponent('MeshComponent')) {
+                const meshComponent = entity.getComponent('MeshComponent');
+                if (meshComponent.mesh && meshComponent.addedToScene) {
+                    // Remove from scene
+                    this.scene.remove(meshComponent.mesh);
+                    meshComponent.addedToScene = false;
+                    console.log('RenderSystem: Removed deactivated entity mesh from scene');
+                }
+            }
+        }
+        
         // Process all matching entities
         super.update(world);
         

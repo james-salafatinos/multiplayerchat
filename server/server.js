@@ -55,15 +55,100 @@ db.exec(`
     username TEXT NOT NULL,
     content TEXT NOT NULL,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-  )
+  );
+  
+  CREATE TABLE IF NOT EXISTS player_inventory (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id TEXT NOT NULL,
+    slot_index INTEGER NOT NULL,
+    item_id INTEGER NOT NULL,
+    item_name TEXT NOT NULL,
+    item_description TEXT,
+    UNIQUE(player_id, slot_index)
+  );
+  
+  CREATE TABLE IF NOT EXISTS world_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_uuid TEXT NOT NULL UNIQUE,
+    item_id INTEGER NOT NULL,
+    item_name TEXT NOT NULL,
+    item_description TEXT,
+    position_x REAL NOT NULL,
+    position_y REAL NOT NULL,
+    position_z REAL NOT NULL
+  );
 `);
 
 // Prepare statements
 const insertMessage = db.prepare('INSERT INTO messages (username, content) VALUES (?, ?)');
 const getRecentMessages = db.prepare('SELECT * FROM messages ORDER BY timestamp DESC LIMIT 50');
 
-// Track connected players
+// Inventory statements
+const getPlayerInventory = db.prepare('SELECT * FROM player_inventory WHERE player_id = ? ORDER BY slot_index');
+const setInventoryItem = db.prepare('INSERT OR REPLACE INTO player_inventory (player_id, slot_index, item_id, item_name, item_description) VALUES (?, ?, ?, ?, ?)');
+const removeInventoryItem = db.prepare('DELETE FROM player_inventory WHERE player_id = ? AND slot_index = ?');
+const clearPlayerInventory = db.prepare('DELETE FROM player_inventory WHERE player_id = ?');
+
+// World item statements
+const getWorldItems = db.prepare('SELECT * FROM world_items');
+const addWorldItem = db.prepare('INSERT OR REPLACE INTO world_items (item_uuid, item_id, item_name, item_description, position_x, position_y, position_z) VALUES (?, ?, ?, ?, ?, ?, ?)');
+const removeWorldItem = db.prepare('DELETE FROM world_items WHERE item_uuid = ?');
+
+// Track connected players and world items
 const players = new Map();
+const worldItems = new Map(); // Map of items in the world by unique ID
+
+// Initialize world items from database
+try {
+  const items = getWorldItems.all();
+  items.forEach(item => {
+    worldItems.set(item.item_uuid, {
+      uuid: item.item_uuid,
+      id: item.item_id,
+      name: item.item_name,
+      description: item.item_description,
+      position: {
+        x: item.position_x,
+        y: item.position_y,
+        z: item.position_z
+      }
+    });
+  });
+  console.log(`Loaded ${worldItems.size} items from database`);
+  
+  // If no items in database, create initial items
+  if (worldItems.size === 0) {
+    console.log('Creating initial world items as database was empty.');
+    const initialItems = [
+      { uuid: 'item-1', id: 1, name: 'Basic Item', description: 'A basic item that can be picked up', position: { x: 2, y: 0.15, z: 2 } },
+      { uuid: 'item-2', id: 1, name: 'Basic Item', description: 'A basic item that can be picked up', position: { x: -2, y: 0.15, z: 2 } },
+      { uuid: 'item-3', id: 1, name: 'Basic Item', description: 'A basic item that can be picked up', position: { x: 2, y: 0.15, z: -2 } },
+      // { uuid: 'item-4', id: 1, name: 'Basic Item', description: 'A basic item that can be picked up', position: { x: -2, y: 0.15, z: -2 } } // Let's start with 3 for now
+    ];
+    
+    initialItems.forEach(item => {
+      console.log(`Attempting to add initial item to worldItems map and DB: ${JSON.stringify(item)}`);
+      worldItems.set(item.uuid, item);
+      try {
+        addWorldItem.run(
+          item.uuid,
+          item.id,
+          item.name,
+          item.description,
+          item.position.x,
+          item.position.y,
+          item.position.z
+        );
+        console.log(`Successfully added item ${item.uuid} to DB.`);
+      } catch (dbError) {
+        console.error(`Error adding item ${item.uuid} to DB:`, dbError);
+      }
+    });
+    console.log(`Finished creating initial world items. World items count: ${worldItems.size}`);
+  }
+} catch (error) {
+  console.error('Error initializing world items:', error);
+}
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
@@ -74,8 +159,29 @@ io.on('connection', (socket) => {
     id: socket.id,
     username: `Player-${socket.id.substring(0, 4)}`,
     position: { x: 0, y: 0, z: 0 },
-    color: Math.random() * 0xffffff // Random color for each player
+    color: Math.random() * 0xffffff, // Random color for each player
+    inventory: Array(28).fill(null) // Initialize empty inventory with 28 slots
   };
+  
+  // Add default item to player's inventory
+  newPlayer.inventory[0] = {
+    id: 0,
+    name: 'Default Item',
+    description: 'The default item that every player starts with'
+  };
+  
+  // Save default item to database
+  try {
+    setInventoryItem.run(
+      socket.id,
+      0, // slot index
+      0, // item id
+      'Default Item',
+      'The default item that every player starts with'
+    );
+  } catch (error) {
+    console.error('Error saving default item to database:', error);
+  }
   
   // Add player to the players map
   players.set(socket.id, newPlayer);
@@ -92,6 +198,10 @@ io.on('connection', (socket) => {
   // Using socket.broadcast.emit ensures this only goes to other clients, not the sender
   socket.broadcast.emit('player joined', newPlayer);
   
+  // Explicitly send the player's initial inventory
+  console.log(`Sending initial inventory to player ${socket.id}:`, newPlayer.inventory);
+  socket.emit('player inventory', newPlayer.inventory);
+  
   // Update user count for all clients
   io.emit('user count', players.size);
   
@@ -99,7 +209,28 @@ io.on('connection', (socket) => {
   const recentMessages = getRecentMessages.all().reverse();
   socket.emit('chat history', recentMessages);
   
-  // Handle new chat messages
+  // Send player's inventory data
+  console.log(`Sending player inventory to ${socket.id}:`, JSON.stringify(newPlayer.inventory));
+  socket.emit('player inventory', newPlayer.inventory);
+  
+  // Send world items state
+  const worldItemsArray = Array.from(worldItems.values());
+  console.log(`Sending world items state to ${socket.id}:`, JSON.stringify(worldItemsArray));
+  socket.emit('world items state', worldItemsArray);
+  
+  // Handle explicit inventory data request
+  socket.on('request inventory', (data) => {
+    console.log(`Received inventory request from player ${socket.id}`, data);
+    const player = players.get(socket.id);
+    if (player && player.inventory) {
+      console.log(`Sending inventory data to player ${socket.id}:`, player.inventory);
+      socket.emit('player inventory', player.inventory);
+    } else {
+      console.warn(`Inventory request received but player ${socket.id} not found or has no inventory`);
+    }
+  });
+  
+  // Handle chat messages
   socket.on('chat message', (data) => {
     const { username, content } = data;
     
@@ -160,6 +291,188 @@ io.on('connection', (socket) => {
     }
   });
   
+  // Handle inventory updates
+  socket.on('inventory update', (data) => {
+    console.log('Inventory update received:', data);
+    
+    try {
+      // Update player's inventory in memory
+      const player = players.get(socket.id);
+      if (player && player.inventory) {
+        switch (data.action) {
+          case 'pickup':
+            // Check if item still exists in the world (another player might have picked it up already)
+            if (data.itemUuid && !worldItems.has(data.itemUuid)) {
+              console.log(`Item ${data.itemUuid} no longer exists in the world`);
+              socket.emit('pickup failure', { message: 'Item no longer available.' });
+              return;
+            }
+
+            // Find an empty slot in player's inventory
+            const emptySlotIndex = player.inventory.findIndex(slot => slot === null);
+            
+            if (emptySlotIndex === -1) {
+              console.log('Inventory full, cannot pick up item');
+              socket.emit('pickup failure', { message: 'Inventory is full.' });
+              return;
+            }
+            
+            // Get item details from worldItems
+            const itemToPickup = worldItems.get(data.itemUuid);
+            if (!itemToPickup) {
+                console.error(`Item ${data.itemUuid} not found in worldItems map during pickup attempt.`);
+                socket.emit('pickup failure', { message: 'Item not found.' });
+                return;
+            }
+
+            // Add item to player's inventory (memory)
+            player.inventory[emptySlotIndex] = {
+              uuid: itemToPickup.uuid, // Store UUID for potential future drop identification
+              id: itemToPickup.id,
+              name: itemToPickup.name,
+              description: itemToPickup.description,
+              // quantity: 1 // If items can stack
+            };
+            
+            // Remove item from world (memory)
+            worldItems.delete(data.itemUuid);
+            
+            // Remove item from world_items table in DB
+            removeWorldItem.run(data.itemUuid);
+            
+            // Save item to player_inventory table in DB
+            setInventoryItem.run(
+              socket.id,
+              emptySlotIndex,
+              itemToPickup.id,
+              itemToPickup.name,
+              itemToPickup.description
+            );
+            
+            // Send updated inventory to client
+            socket.emit('inventory update', {
+              inventory: player.inventory,
+              item: itemToPickup, // Send the picked up item details
+              message: `Picked up ${itemToPickup.name}`
+            });
+            
+            // Notify all clients that item was removed from world
+            io.emit('item removed', data.itemUuid);
+            
+            console.log(`Player ${socket.id} picked up item ${data.itemUuid}`);
+            break;
+            
+          case 'drop':
+            // Get the item being dropped
+            const droppedItem = player.inventory[data.slotIndex];
+            
+            if (droppedItem) {
+              // Remove from inventory
+              player.inventory[data.slotIndex] = null;
+              
+              // Remove from database
+              removeInventoryItem.run(socket.id, data.slotIndex);
+              
+              // Create a new world item at the player's position
+              const itemUuid = `item-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+              const worldItem = {
+                uuid: itemUuid,
+                id: droppedItem.id,
+                name: droppedItem.name,
+                description: droppedItem.description || '',
+                position: {
+                  x: player.position.x,
+                  y: 0.15, // Slightly above ground
+                  z: player.position.z
+                }
+              };
+              
+              // Add to memory
+              worldItems.set(itemUuid, worldItem);
+              
+              // Add to database
+              addWorldItem.run(
+                itemUuid,
+                worldItem.id,
+                worldItem.name,
+                worldItem.description,
+                worldItem.position.x,
+                worldItem.position.y,
+                worldItem.position.z
+              );
+              
+              // Notify all clients about the new world item
+              io.emit('add world item', worldItem);
+              
+              // Notify about inventory update
+              io.emit('inventory update', {
+                playerId: socket.id,
+                ...data
+              });
+            }
+            break;
+            
+          case 'move':
+            // Move item between slots
+            const sourceItem = player.inventory[data.sourceSlotIndex];
+            const targetItem = player.inventory[data.targetSlotIndex];
+            
+            // Skip if source slot is empty
+            if (!sourceItem) break;
+            
+            // Swap items in memory
+            player.inventory[data.targetSlotIndex] = sourceItem;
+            player.inventory[data.sourceSlotIndex] = targetItem;
+            
+            // Update database - first remove both items if they exist
+            if (sourceItem) {
+              removeInventoryItem.run(socket.id, data.sourceSlotIndex);
+            }
+            
+            if (targetItem) {
+              removeInventoryItem.run(socket.id, data.targetSlotIndex);
+            }
+            
+            // Then add them back in their new positions
+            if (sourceItem) {
+              setInventoryItem.run(
+                socket.id,
+                data.targetSlotIndex,
+                sourceItem.id,
+                sourceItem.name,
+                sourceItem.description || ''
+              );
+            }
+            
+            if (targetItem) {
+              setInventoryItem.run(
+                socket.id,
+                data.sourceSlotIndex,
+                targetItem.id,
+                targetItem.name,
+                targetItem.description || ''
+              );
+            }
+            
+            // Notify about inventory update
+            io.emit('inventory update', {
+              playerId: socket.id,
+              ...data
+            });
+            break;
+        }
+      }
+    } catch (error) {
+      console.error('Error updating inventory:', error);
+      
+      // Send error to client
+      socket.emit('inventory error', {
+        action: data.action,
+        error: 'Server error processing inventory update'
+      });
+    }
+  });
+
   // Handle disconnection
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
@@ -172,6 +485,8 @@ io.on('connection', (socket) => {
     
     // Update user count for all clients
     io.emit('user count', players.size);
+    
+    // Note: We don't delete inventory data on disconnect to persist it for when the player returns
   });
 });
 

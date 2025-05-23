@@ -63,8 +63,36 @@ export class Entity {
 
     /**
      * Deactivate this entity
+     * @param {boolean} cleanup - Whether to clean up resources like meshes
      */
-    deactivate() {
+    deactivate(cleanup = true) {
+        if (cleanup && this.hasComponent('MeshComponent')) {
+            const meshComponent = this.getComponent('MeshComponent');
+            if (meshComponent.mesh) {
+                // Remove from parent (scene) if it has one
+                if (meshComponent.mesh.parent) {
+                    meshComponent.mesh.parent.remove(meshComponent.mesh);
+                }
+                
+                // Dispose of geometry and materials to prevent memory leaks
+                if (meshComponent.mesh.geometry) {
+                    meshComponent.mesh.geometry.dispose();
+                }
+                
+                if (meshComponent.mesh.material) {
+                    if (Array.isArray(meshComponent.mesh.material)) {
+                        meshComponent.mesh.material.forEach(material => material.dispose());
+                    } else {
+                        meshComponent.mesh.material.dispose();
+                    }
+                }
+                
+                // Mark as removed from scene
+                meshComponent.addedToScene = false;
+            }
+        }
+        
+        // Mark as inactive
         this.active = false;
     }
 }

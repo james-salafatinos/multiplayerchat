@@ -1,12 +1,13 @@
 # Project Tasks
 
 ## Current Tasks
+- [ ] Debug and re-architect inventory system for correct multiplayer synchronization and persistence (2025-05-23) (In Progress)
 - [ ] Test and debug the application (2025-05-23)
 - [ ] Add player avatars and movement (Future enhancement)
 - [ ] Implement world interaction (Future enhancement)
-- [ ] Create inventory system (Future enhancement)
 
 ## Completed Tasks
+- [ ] Create inventory system (2025-05-23)
 - [x] Initialize project with npm (2025-05-23)
 - [x] Create PLANNING.md (2025-05-23)
 - [x] Set up project dependencies (2025-05-23)

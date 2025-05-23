@@ -1,5 +1,5 @@
 # Multiplayer ThreeJS Project Planning
-
+Dont use mkdir it doesnt work
 ## Vision
 Ill describe how envision using it to continue to scale. Some elements i typically do is making a visual of data with threejs, and lots of other threejs visualizations and simulation/phsyiscs systesm, video games 3D tools basically. I've made games too. So making visuals, and like but what i would need in the future is scalable things from that visual purpsoe -- like Client fetch APIs,  webworkers, database, websockets (socket.io) for multiplayer, a multiplayer subsystem to support server authoritative mechanics for like an mmorpg game where players interact (there are character models) they interact with the 3d world, point and click movement, have banks/inventories, can chat to other players via "tab" to chat interface. 
 
