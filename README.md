@@ -13,7 +13,7 @@ A real-time multiplayer 3D application with Three.js, Socket.io, and a persisten
 - Third-person camera system with controlled rotation limits
 - Context menu system for player and world interactions
 - Player-to-player trading system with item exchange
-- RESTful API endpoints for database access and monitoring
+- RESTful API endpoints for database access and monitoring (including detailed admin views for inventories, world items, and connected players)
 
 ## Detailed Architecture Breakdown
 
@@ -89,10 +89,12 @@ A real-time multiplayer 3D application with Three.js, Socket.io, and a persisten
   - Uses raycasting to detect clicked objects
   - Dynamically generates menu options based on interaction target
   - Supports player-to-player interactions like trading
+  - Works in conjunction with `public/js/contextMenu.js` for UI management.
 
 - **`public/js/ecs/playerEntityHelper.js`**: Utility functions for player entities:
   - Updates player entity meshes with entity IDs for raycasting detection
   - Facilitates player interaction through the context menu system
+  - Synchronizes trade state between players in real-time
 
 - **`public/js/tradeSystem.js`**: Player-to-player trading functionality:
   - Allows players to request trades with each other
@@ -108,9 +110,10 @@ A real-time multiplayer 3D application with Three.js, Socket.io, and a persisten
   - Manages player connections and disconnections
   - Processes chat messages and stores them in the database
   - Handles inventory actions (pickup, drop, move)
+  - Manages player-to-player trade requests, state transitions, and item exchanges.
   - Maintains world state (items, players)
   - Synchronizes data between clients
-  - Provides RESTful API endpoints for database access and monitoring
+  - Provides RESTful API endpoints for database access and monitoring, including new endpoints for detailed views of player inventories, world items, and connected player states (documented in `API.md`).
 
 ### Database Structure
 
@@ -222,22 +225,81 @@ A real-time multiplayer 3D application with Three.js, Socket.io, and a persisten
 └─────────────────────────────┘               └─────────────────────────────┘
 ```
 
+## Trade System Data Flow
+
+```mermaid
+graph TD
+    subgraph Initiator Client (Player A)
+        A1[Right-clicks Player B, Selects "Trade" via ContextMenuSystem]
+        A2[Emits 'trade request' to Server for Player B]
+        A3[Receives 'trade request response' from Server]
+        A4[If accepted, opens trade window (tradeSystem.js)]
+        A5[Offers/Accepts items, Emits 'trade update'/'trade accept' to Server]
+    end
+
+    subgraph Target Client (Player B)
+        B1[Receives 'trade request' from Server]
+        B2[Displays trade request UI (tradeSystem.js)]
+        B3[Accepts/Declines, Emits 'trade request response' to Server]
+        B4[Receives 'trade update'/'trade accept' from Server]
+        B5[Updates trade window UI, Offers/Accepts items, Emits 'trade update'/'trade accept' to Server]
+    end
+
+    subgraph SERVER
+        S1[Receives 'trade request' from Player A]
+        S2[Forwards 'trade request' to Player B]
+        S3[Receives 'trade request response' from Player B]
+        S4[Forwards 'trade request response' to Player A]
+        S5[Receives 'trade update'/'trade accept' from A or B]
+        S6[Forwards 'trade update'/'trade accept' to other player]
+        S7[If both accept: Validates trade, Updates DB & player inventories]
+        S8[Emits 'inventory update' to both players]
+        S9[Emits 'trade complete/cancelled' (optional)]
+    end
+
+    A1 --> A2
+    A2 --> S1
+    S1 --> S2
+    S2 --> B1
+    B1 --> B2
+    B2 --> B3
+    B3 --> S3
+    S3 --> S4
+    S4 --> A3
+    A3 -- If Accepted --> A4
+    A4 --> A5
+    A5 --> S5
+    S5 --> S6
+    S6 --> B4
+    B4 --> B5
+    B5 --> S5 # Cycle for updates/accepts
+
+    S5 -- Both Accepted --> S7
+    S7 --> S8
+    S8 --> A3 # Actually to a new state for inventory update
+    S8 --> B1 # Actually to a new state for inventory update
+    S7 --> S9
+    S9 --> A3
+    S9 --> B1
+```
+
 ## Project Structure
 
 ```
 multiplayer-chat/
-├── public/                      # Client-side files
-│   ├── index.html               # Main HTML page
-│   ├── css/                     # CSS styles
-│   │   └── style.css            # Main stylesheet
-│   ├── js/                      # Client-side JavaScript
+├── public/
+│   ├── css/
+│   │   ├── style.css            # Main stylesheet
+│   │   ├── context-menu.css     # Styles for the context menu
+│   │   ├── trade-window.css     # Styles for the trade window
+│   ├── js/
 │   │   ├── app.js               # Main application entry point
 │   │   ├── network.js           # Socket.io communication
 │   │   ├── chat.js              # Chat system management
 │   │   ├── three-setup.js       # Three.js initialization
-│   │   ├── contextMenu.js       # Context menu UI management
-│   │   ├── tradeSystem.js       # Player-to-player trading functionality
-│   │   └── ecs/                 # Entity Component System
+│   │   ├── contextMenu.js       # Context menu UI and management
+│   │   ├── tradeSystem.js       # Player-to-player trade UI and logic
+│   │   └── ecs/
 │   │       ├── core.js          # ECS core implementation
 │   │       ├── components.js    # Component definitions
 │   │       ├── entities.js      # Entity factory functions
@@ -249,13 +311,16 @@ multiplayer-chat/
 │   │       ├── inventoryComponents.js # Inventory component definitions
 │   │       ├── inventoryEntities.js # Inventory entity factories
 │   │       └── inventorySystem.js # Inventory management system
-├── server/                      # Server-side files
-│   └── server.js                # Main server file
-├── chat.db                      # SQLite database file
-├── package.json                 # Node.js dependencies
-├── package-lock.json            # Dependency lock file
-├── API.md                       # API documentation
-└── README.md                    # Project documentation
+│   ├── assets/                  # Static assets (textures, models, etc.)
+│   └── index.html               # Main HTML page
+├── server/
+│   └── server.js              # Server-side application logic
+├── chat.db                    # SQLite database file
+├── API.md                     # Detailed API documentation
+├── README.md                  # This file
+├── package.json
+├── package-lock.json
+└── todo.md                    # Task tracking and future ideas
 ```
 
 ## Technologies Used

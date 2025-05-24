@@ -37,12 +37,11 @@ export function initThreeJS() {
     controls.zoomSpeed = 1.0;
     controls.panSpeed = 0.8;
     controls.minDistance = 5;
-    controls.maxDistance = 50;
+    controls.maxDistance = 10;
     
     // Limit vertical rotation (in radians)
     controls.minPolarAngle = Math.PI / 6;  // 30 degrees from top (can't look straight down)
-    controls.maxPolarAngle = Math.PI / 1.5; // 120 degrees (can't look too far up)
-    
+    controls.maxPolarAngle = Math.PI / 2; 
     // Add axes helper
     const axesHelper = new THREE.AxesHelper(2);
     scene.add(axesHelper);
