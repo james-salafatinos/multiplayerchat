@@ -17,8 +17,8 @@ export class CameraSystem extends System {
         this.controls = getControls();
         
         // Fixed camera distance properties
-        this.fixedDistance = 15; // Fixed distance from player
-        this.heightOffset = 15;   // Height offset above player
+        this.fixedDistance = 5; // Fixed distance from player
+        this.heightOffset = 5;   // Height offset above player
         this.dampingFactor = 0.99; // How quickly camera catches up
         
         // Store the initial camera-to-target vector for maintaining distance

@@ -1,0 +1,59 @@
+Date : 2025-05-23 20:36:14
+Directory : c:\Users\james\OneDrive\Desktop\repos\multiplayerchat
+Total : 23 files,  6258 codes, 1082 comments, 797 blanks, all 8137 lines
+
+Languages
++------------+------------+------------+------------+------------+------------+
+| language   | files      | code       | comment    | blank      | total      |
++------------+------------+------------+------------+------------+------------+
+| JavaScript |         16 |      2,887 |      1,073 |        663 |      4,623 |
+| JSON       |          2 |      2,697 |          0 |          2 |      2,699 |
+| Markdown   |          2 |        419 |          0 |         90 |        509 |
+| CSS        |          2 |        218 |          6 |         37 |        261 |
+| HTML       |          1 |         37 |          3 |          5 |         45 |
++------------+------------+------------+------------+------------+------------+
+
+Directories
++--------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                       | files      | code       | comment    | blank      | total      |
++--------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                          |         23 |      6,258 |      1,082 |        797 |      8,137 |
+| . (Files)                                                                                  |          4 |      3,116 |          0 |         92 |      3,208 |
+| public                                                                                     |         18 |      2,735 |      1,000 |        619 |      4,354 |
+| public (Files)                                                                             |          1 |         37 |          3 |          5 |         45 |
+| public\css                                                                                 |          2 |        218 |          6 |         37 |        261 |
+| public\js                                                                                  |         15 |      2,480 |        991 |        577 |      4,048 |
+| public\js (Files)                                                                          |          5 |        620 |        228 |        136 |        984 |
+| public\js\ecs                                                                              |         10 |      1,860 |        763 |        441 |      3,064 |
+| server                                                                                     |          1 |        407 |         82 |         86 |        575 |
++--------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++--------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| filename                                                                                   | language   | code       | comment    | blank      | total      |
++--------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\API.md                               | Markdown   |        172 |          0 |         42 |        214 |
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\README.md                            | Markdown   |        247 |          0 |         48 |        295 |
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\package-lock.json                    | JSON       |      2,676 |          0 |          1 |      2,677 |
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\package.json                         | JSON       |         21 |          0 |          1 |         22 |
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\public\css\context-menu.css          | CSS        |         46 |          1 |          9 |         56 |
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\public\css\style.css                 | CSS        |        172 |          5 |         28 |        205 |
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\public\index.html                    | HTML       |         37 |          3 |          5 |         45 |
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\public\js\app.js                     | JavaScript |        289 |         51 |         40 |        380 |
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\public\js\chat.js                    | JavaScript |         85 |         41 |         25 |        151 |
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\public\js\contextMenu.js             | JavaScript |         94 |         57 |         30 |        181 |
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\public\js\ecs\cameraSystem.js        | JavaScript |         41 |         21 |         13 |         75 |
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\public\js\ecs\chatBubbleSystem.js    | JavaScript |        137 |         66 |         40 |        243 |
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\public\js\ecs\components.js          | JavaScript |        121 |         37 |         13 |        171 |
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\public\js\ecs\contextMenuSystem.js   | JavaScript |        293 |         99 |         58 |        450 |
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\public\js\ecs\core.js                | JavaScript |         98 |         83 |         25 |        206 |
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\public\js\ecs\entities.js            | JavaScript |        139 |         58 |         38 |        235 |
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\public\js\ecs\inventoryComponents.js | JavaScript |         58 |         36 |         15 |        109 |
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\public\js\ecs\inventoryEntities.js   | JavaScript |        109 |         38 |         21 |        168 |
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\public\js\ecs\inventorySystem.js     | JavaScript |        498 |        198 |        132 |        828 |
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\public\js\ecs\systems.js             | JavaScript |        366 |        127 |         86 |        579 |
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\public\js\network.js                 | JavaScript |         94 |         38 |         21 |        153 |
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\public\js\three-setup.js             | JavaScript |         58 |         41 |         20 |        119 |
+| c:\Users\james\OneDrive\Desktop\repos\multiplayerchat\server\server.js                     | JavaScript |        407 |         82 |         86 |        575 |
+| Total                                                                                      |            |      6,258 |      1,082 |        797 |      8,137 |
++--------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+

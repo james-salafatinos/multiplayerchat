@@ -2,6 +2,7 @@
 import { initThreeJS, getScene, getCamera } from './three-setup.js';
 import { initNetwork, getSocket, getLocalPlayerId } from './network.js';
 import { initChat } from './chat.js';
+import { handleTradeRequest, handleTradeRequestResponse } from './tradeSystem.js';
 import { World } from './ecs/core.js';
 import { createCube, createGround, createPlayer } from './ecs/entities.js';
 import { createBasicItem } from './ecs/inventoryEntities.js';
@@ -9,7 +10,10 @@ import { RenderSystem, RotationSystem, MovementSystem } from './ecs/systems.js';
 import { CameraSystem } from './ecs/cameraSystem.js';
 import { ChatBubbleSystem } from './ecs/chatBubbleSystem.js';
 import { InventorySystem } from './ecs/inventorySystem.js';
+import { ContextMenuSystem } from './ecs/contextMenuSystem.js';
+import { getContextMenuManager } from './contextMenu.js';
 import { InventoryComponent } from './ecs/inventoryComponents.js';
+import { updatePlayerEntityMeshes } from './ecs/playerEntityHelper.js';
 
 // Initialize the ECS world
 const world = new World();
@@ -70,6 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
     world.registerSystem(new ChatBubbleSystem(scene));
     world.registerSystem(new InventorySystem(socket));
     world.registerSystem(new CameraSystem());
+    world.registerSystem(new ContextMenuSystem(socket));
     
     // Set up initial camera position for isometric view
     const camera = getCamera();
@@ -363,12 +368,54 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('World item entity added:', itemData.uuid);
     });
     
+    // Handle trade requests
+    document.addEventListener('trade-request-received', (event) => {
+        const data = event.detail;
+        const localId = getLocalPlayerId();
+        
+        // Find local player entity
+        const localPlayerEntity = playerEntities.get(localId);
+        if (!localPlayerEntity) {
+            console.error('[App.js] Could not find local player entity for trade request');
+            return;
+        }
+        
+        // Get local player's username from the PlayerComponent
+        const localPlayerComponent = localPlayerEntity.getComponent('PlayerComponent');
+        if (!localPlayerComponent) {
+            console.error('[App.js] Local player entity does not have a PlayerComponent');
+            return;
+        }
+        
+        // Handle the trade request
+        handleTradeRequest(
+            {
+                fromPlayerId: data.fromPlayerId,
+                fromPlayerName: data.fromPlayerName,
+                tradeId: data.tradeId
+            },
+            getSocket(),
+            localId,
+            localPlayerComponent.username
+        );
+    });
+    
+    // Handle trade request responses
+    document.addEventListener('trade-request-response', (event) => {
+        const data = event.detail;
+        // Handle the trade request response
+        handleTradeRequestResponse(data);
+    });
+    
     // Main animation loop
     function animate() {
         requestAnimationFrame(animate);
         
         // Update all systems
         world.update(performance.now() / 1000);
+        
+        // Ensure player entities have proper userData for raycasting
+        updatePlayerEntityMeshes(world);
     }
     
     // Start the animation loop

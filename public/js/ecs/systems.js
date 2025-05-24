@@ -214,12 +214,15 @@ export class MovementSystem extends System {
             this.mouseDownTime = 0;
             this.mouseDownPos = { x: 0, y: 0 };
             
-            // Mouse down - start tracking for potential click
+            // Mouse down - start tracking for potential click (left click only)
             renderer.domElement.addEventListener('mousedown', (event) => {
-                this.mouseDown = true;
-                this.mouseMoved = false;
-                this.mouseDownTime = performance.now();
-                this.mouseDownPos = { x: event.clientX, y: event.clientY };
+                // Only track left mouse button (button 0)
+                if (event.button === 0) {
+                    this.mouseDown = true;
+                    this.mouseMoved = false;
+                    this.mouseDownTime = performance.now();
+                    this.mouseDownPos = { x: event.clientX, y: event.clientY };
+                }
             });
             
             // Mouse move - track if user is dragging
@@ -236,21 +239,24 @@ export class MovementSystem extends System {
                 }
             });
             
-            // Mouse up - if it was a click (not a drag), handle player movement
+            // Mouse up - if it was a left click (not a drag), handle player movement
             renderer.domElement.addEventListener('mouseup', (event) => {
-                // Only handle as a click if:
-                // 1. Mouse was down
-                // 2. Mouse didn't move significantly (not a drag)
-                // 3. Click duration was short enough
-                const clickDuration = performance.now() - this.mouseDownTime;
-                
-                if (this.mouseDown && !this.mouseMoved && clickDuration < 300) {
-                    this.handleClick(event);
+                // Only handle left mouse button (button 0)
+                if (event.button === 0) {
+                    // Only handle as a click if:
+                    // 1. Mouse was down
+                    // 2. Mouse didn't move significantly (not a drag)
+                    // 3. Click duration was short enough
+                    const clickDuration = performance.now() - this.mouseDownTime;
+                    
+                    if (this.mouseDown && !this.mouseMoved && clickDuration < 300) {
+                        this.handleClick(event);
+                    }
+                    
+                    // Reset mouse state
+                    this.mouseDown = false;
+                    this.mouseMoved = false;
                 }
-                
-                // Reset mouse state
-                this.mouseDown = false;
-                this.mouseMoved = false;
             });
             
             // Handle touch events for mobile
@@ -423,6 +429,13 @@ export class MovementSystem extends System {
         if (distance < 0.1) {
             movementComponent.isMoving = false;
             console.log('Reached target position');
+            
+            // Call onReachTarget callback if it exists
+            if (typeof movementComponent.onReachTarget === 'function') {
+                console.log('Calling onReachTarget callback');
+                movementComponent.onReachTarget();
+            }
+            
             return;
         }
         

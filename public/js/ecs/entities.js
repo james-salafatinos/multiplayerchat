@@ -195,6 +195,8 @@ export function createPlayer(world, options = {}) {
     // Create entity and add components
     const entity = new Entity();
     
+    // We'll set the entity ID after adding to world when ID is guaranteed to be set
+    
     // Transform component
     entity.addComponent(new TransformComponent({
         position: config.position,

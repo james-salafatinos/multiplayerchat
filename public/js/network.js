@@ -122,6 +122,22 @@ export function initNetwork() {
         alert(`Inventory Error: ${errorData.message}`);
     });
     
+    // Handle trade requests
+    socket.on('trade request', (data) => {
+        console.log('Received trade request:', data);
+        document.dispatchEvent(new CustomEvent('trade-request-received', {
+            detail: data
+        }));
+    });
+    
+    // Handle trade request responses
+    socket.on('trade request response', (data) => {
+        console.log('Received trade request response:', data);
+        document.dispatchEvent(new CustomEvent('trade-request-response', {
+            detail: data
+        }));
+    });
+    
     return socket;
 }
 
