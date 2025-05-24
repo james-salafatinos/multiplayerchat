@@ -373,6 +373,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = event.detail;
         const localId = getLocalPlayerId();
         
+        console.log('[App.js] Received trade request:', data);
+        
         // Find local player entity
         const localPlayerEntity = playerEntities.get(localId);
         if (!localPlayerEntity) {
@@ -388,6 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // Handle the trade request
+        console.log('[App.js] Forwarding trade request to handleTradeRequest');
         handleTradeRequest(
             {
                 fromPlayerId: data.fromPlayerId,

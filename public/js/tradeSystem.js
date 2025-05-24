@@ -20,6 +20,15 @@ let pendingTradeRequests = new Map(); // Map of pending trade requests by player
  * @param {Object} options.socket - Socket.io connection
  */
 export function requestTrade(options) {
+    console.log('Requesting trade with player:', options.remotePlayerName);
+    
+    // Check if there's an active trade already
+    if (activeTrade) {
+        console.log('Cannot request trade: Another trade is already active');
+        showNotification('Cannot request trade: Another trade is already active');
+        return;
+    }
+    
     // Store the pending trade request
     pendingTradeRequests.set(options.remotePlayerId, {
         localPlayerId: options.localPlayerId,
@@ -919,24 +928,33 @@ function cancelTrade() {
  * Close the trade window
  */
 export function closeTradeWindow() {
+    console.log('Closing trade window');
+    
     // Remove trade window from DOM
     const tradeWindow = document.getElementById('trade-window');
     if (tradeWindow) {
         document.body.removeChild(tradeWindow);
     }
     
-    // Remove socket listeners
+    // Remove socket listeners that were set up specifically for this trade
     if (activeTrade && activeTrade.socket) {
-        activeTrade.socket.off('trade request');
+        // Note: We're NOT removing the 'trade request' listener as that's needed for future trades
         activeTrade.socket.off('trade update');
         activeTrade.socket.off('trade accept');
         activeTrade.socket.off('trade cancel');
         activeTrade.socket.off('trade complete');
         activeTrade.socket.off('trade modify');
+        
+        // Clear pending trade request for this player to allow new trade requests
+        if (activeTrade.remotePlayerId) {
+            console.log(`Clearing pending trade request for player: ${activeTrade.remotePlayerId}`);
+            pendingTradeRequests.delete(activeTrade.remotePlayerId);
+        }
     }
     
     // Clear active trade
     activeTrade = null;
+    console.log('Active trade cleared, ready for new trade requests');
 }
 
 /**
