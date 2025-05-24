@@ -224,12 +224,15 @@ export function handleTradeRequestResponse(data) {
  * @param {Object} options.socket - Socket.io connection
  */
 export function showTradeWindow(options) {
-    // If there's already an active trade, close it first
+    console.log('Showing trade window with options:', options);
+    
+    // Check if there's already an active trade
     if (activeTrade) {
-        closeTradeWindow();
+        console.log('Trade window is already open');
+        return;
     }
-
-    // Store active trade info
+    
+    // Set up active trade
     activeTrade = {
         localPlayerId: options.localPlayerId,
         localPlayerName: options.localPlayerName,
@@ -240,14 +243,35 @@ export function showTradeWindow(options) {
         remoteItems: [],
         localAccepted: false,
         remoteAccepted: false,
-        status: 'pending' // pending, accepted, completed, cancelled
+        status: 'active'
     };
-
+    
     // Create trade window UI
     createTradeWindowUI();
-
-    // Set up socket listeners for trade events
+    
+    // Set up socket event listeners
     setupTradeEventListeners();
+    
+    // Set up right-click context menu for inventory items
+    setupInventoryContextMenu();
+    
+    // Make sure the inventory is visible so items can be clicked
+    const inventoryContainer = document.getElementById('inventory-container');
+    if (inventoryContainer) {
+        console.log('Making inventory visible for trading');
+        inventoryContainer.style.display = 'flex';
+        
+        // Set up click handlers for inventory items
+        // Use setTimeout to ensure the inventory is fully visible
+        setTimeout(() => {
+            setupInventoryItemClickHandlers();
+        }, 100);
+    } else {
+        console.warn('Inventory container not found!');
+    }
+    
+    // Show a notification to the user about how to trade
+    showNotification('Click on items in your inventory to add them to the trade');
 }
 
 /**
@@ -449,20 +473,20 @@ function createTradeSide(playerName, side) {
         borderRadius: '4px',
         padding: '5px',
         marginBottom: '10px',
-        overflowY: 'auto'
+        display: 'flex',
+        flexDirection: 'column'
     });
 
-    // Add offered items title
-    const offeredTitle = document.createElement('div');
-    offeredTitle.textContent = 'Offered Items';
-    Object.assign(offeredTitle.style, {
+    // Create offered items header
+    const offeredHeader = document.createElement('div');
+    offeredHeader.className = 'offered-header';
+    Object.assign(offeredHeader.style, {
         textAlign: 'center',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
-        paddingBottom: '5px',
-        marginBottom: '5px',
-        fontSize: '14px'
+        fontSize: '14px',
+        marginBottom: '5px'
     });
-    offeredSection.appendChild(offeredTitle);
+    offeredHeader.textContent = 'Offered Items';
+    offeredSection.appendChild(offeredHeader);
 
     // Create offered items grid
     const offeredGrid = document.createElement('div');
@@ -471,130 +495,27 @@ function createTradeSide(playerName, side) {
         display: 'grid',
         gridTemplateColumns: 'repeat(4, 1fr)',
         gap: '5px',
-        padding: '5px'
+        padding: '5px',
+        flex: '1'
     });
     offeredSection.appendChild(offeredGrid);
-
-    // Create inventory section (only for local player)
-    const inventorySection = document.createElement('div');
-    inventorySection.className = 'inventory-section';
-    Object.assign(inventorySection.style, {
-        flex: '1',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
-        borderRadius: '4px',
-        padding: '5px',
-        overflowY: 'auto'
-    });
-
-    // Add inventory title
-    const inventoryTitle = document.createElement('div');
-    inventoryTitle.textContent = side === 'local' ? 'Your Inventory' : `${playerName}'s Inventory`;
-    Object.assign(inventoryTitle.style, {
-        textAlign: 'center',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
-        paddingBottom: '5px',
-        marginBottom: '5px',
-        fontSize: '14px'
-    });
-    inventorySection.appendChild(inventoryTitle);
-
-    // Create inventory grid
-    const inventoryGrid = document.createElement('div');
-    inventoryGrid.className = `${side}-inventory-items`;
-    Object.assign(inventoryGrid.style, {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: '5px',
-        padding: '5px'
-    });
-    inventorySection.appendChild(inventoryGrid);
 
     // Add sections to side
     sideElement.appendChild(playerHeader);
     sideElement.appendChild(offeredSection);
-    sideElement.appendChild(inventorySection);
 
     return sideElement;
 }
 
 /**
- * Update the trade window with inventory items
+ * Update the trade window with offered items
  */
 function updateTradeWindowItems() {
-    // Find local player entity to get inventory
-    const world = window.gameWorld; // Assuming the world is stored globally
-    if (!world) return;
-
-    const localPlayerEntity = world.entities.find(entity => 
-        entity.active && 
-        entity.hasComponent('PlayerComponent') && 
-        entity.getComponent('PlayerComponent').isLocalPlayer
-    );
-
-    if (!localPlayerEntity || !localPlayerEntity.hasComponent('InventoryComponent')) return;
-
-    const inventoryComponent = localPlayerEntity.getComponent('InventoryComponent');
-    const localInventoryGrid = document.querySelector('.local-inventory-items');
-    
-    if (!localInventoryGrid) return;
-
-    // Clear existing items
-    localInventoryGrid.innerHTML = '';
-
-    // Add inventory items
-    inventoryComponent.slots.forEach((item, index) => {
-        const itemSlot = document.createElement('div');
-        itemSlot.className = 'inventory-slot';
-        Object.assign(itemSlot.style, {
-            width: '40px',
-            height: '40px',
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            borderRadius: '3px',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            fontSize: '10px',
-            color: 'white',
-            cursor: item ? 'pointer' : 'default'
-        });
-
-        if (item) {
-            // Get item color from inventory system
-            const itemColor = getItemColor(item.id);
-            
-            // Create item display
-            const itemDisplay = document.createElement('div');
-            itemDisplay.className = 'inventory-item';
-            Object.assign(itemDisplay.style, {
-                width: '90%',
-                height: '90%',
-                backgroundColor: itemColor,
-                borderRadius: '3px',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                color: 'white',
-                fontSize: '8px'
-            });
-            itemDisplay.textContent = item.name.substring(0, 3);
-            
-            // Set tooltip
-            itemSlot.title = `${item.name}\n${item.description || ''}`;
-            
-            // Add click handler to offer item
-            itemSlot.addEventListener('click', () => {
-                offerItem(index, item);
-            });
-            
-            itemSlot.appendChild(itemDisplay);
-        }
-        
-        localInventoryGrid.appendChild(itemSlot);
-    });
-
     // Update offered items
     updateOfferedItems();
+    
+    // Set up click handlers for inventory items
+    setupInventoryItemClickHandlers();
 }
 
 /**
@@ -891,6 +812,49 @@ function completeTrade() {
         declineButton.textContent = 'Close';
     }
     
+    // Find local player entity
+    const world = window.gameWorld;
+    if (world) {
+        const localPlayerEntity = world.entities.find(entity => 
+            entity.active && 
+            entity.hasComponent('PlayerComponent') && 
+            entity.getComponent('PlayerComponent').isLocalPlayer
+        );
+        
+        if (localPlayerEntity && localPlayerEntity.hasComponent('InventoryComponent')) {
+            const inventoryComponent = localPlayerEntity.getComponent('InventoryComponent');
+            
+            // Process the item exchange locally
+            // 1. Remove offered items from local inventory
+            activeTrade.localItems.forEach(item => {
+                // Clear the slot in local inventory
+                if (item.inventoryIndex !== undefined && 
+                    inventoryComponent.slots[item.inventoryIndex] !== null) {
+                    inventoryComponent.slots[item.inventoryIndex] = null;
+                }
+            });
+            
+            // 2. Add received items to local inventory
+            activeTrade.remoteItems.forEach(item => {
+                // Find an empty slot to add the received item
+                const emptySlotIndex = inventoryComponent.slots.findIndex(slot => slot === null);
+                if (emptySlotIndex !== -1) {
+                    inventoryComponent.slots[emptySlotIndex] = {
+                        id: item.id,
+                        name: item.name,
+                        description: item.description || ''
+                    };
+                } else {
+                    console.warn('No empty inventory slot for received item:', item.name);
+                    // Could show a notification here that inventory is full
+                }
+            });
+            
+            // Trigger an inventory update event to refresh the UI
+            document.dispatchEvent(new CustomEvent('inventory-display-update'));
+        }
+    }
+    
     // Send completion to server
     activeTrade.socket.emit('trade complete', {
         fromPlayerId: activeTrade.localPlayerId,
@@ -898,6 +862,17 @@ function completeTrade() {
         localItems: activeTrade.localItems,
         remoteItems: activeTrade.remoteItems
     });
+    
+    // Show notification about the trade results
+    if (activeTrade.localItems.length > 0 && activeTrade.remoteItems.length > 0) {
+        showNotification(`Exchanged ${activeTrade.localItems.length} items for ${activeTrade.remoteItems.length} items`);
+    } else if (activeTrade.localItems.length > 0) {
+        showNotification(`Gave ${activeTrade.localItems.length} items to ${activeTrade.remotePlayerName}`);
+    } else if (activeTrade.remoteItems.length > 0) {
+        showNotification(`Received ${activeTrade.remoteItems.length} items from ${activeTrade.remotePlayerName}`);
+    } else {
+        showNotification('Trade completed with no items exchanged');
+    }
     
     // Close trade window after a delay
     setTimeout(() => {
@@ -930,31 +905,25 @@ function cancelTrade() {
 export function closeTradeWindow() {
     console.log('Closing trade window');
     
-    // Remove trade window from DOM
+    // Remove the trade window from the DOM
     const tradeWindow = document.getElementById('trade-window');
     if (tradeWindow) {
-        document.body.removeChild(tradeWindow);
+        tradeWindow.remove();
     }
     
-    // Remove socket listeners that were set up specifically for this trade
+    // Remove context menu event listener from inventory items
+    removeInventoryContextMenu();
+    
+    // Clean up socket event listeners
     if (activeTrade && activeTrade.socket) {
-        // Note: We're NOT removing the 'trade request' listener as that's needed for future trades
         activeTrade.socket.off('trade update');
         activeTrade.socket.off('trade accept');
-        activeTrade.socket.off('trade cancel');
         activeTrade.socket.off('trade complete');
-        activeTrade.socket.off('trade modify');
-        
-        // Clear pending trade request for this player to allow new trade requests
-        if (activeTrade.remotePlayerId) {
-            console.log(`Clearing pending trade request for player: ${activeTrade.remotePlayerId}`);
-            pendingTradeRequests.delete(activeTrade.remotePlayerId);
-        }
+        activeTrade.socket.off('trade cancel');
     }
     
-    // Clear active trade
+    // Reset active trade
     activeTrade = null;
-    console.log('Active trade cleared, ready for new trade requests');
 }
 
 /**
@@ -1057,6 +1026,352 @@ function setupTradeEventListeners() {
 }
 
 /**
+ * Set up click handlers for inventory items during trade
+ */
+function setupInventoryItemClickHandlers() {
+    console.log('Setting up inventory item click handlers for trade');
+    
+    // Find all inventory slots in the game UI
+    const inventorySlots = document.querySelectorAll('.inventory-slot');
+    console.log(`Found ${inventorySlots.length} inventory slots`);
+    
+    if (inventorySlots.length === 0) {
+        console.warn('No inventory slots found! Make sure inventory is visible');
+        // Try again after a short delay to ensure inventory is loaded
+        setTimeout(() => {
+            const retrySlots = document.querySelectorAll('.inventory-slot');
+            console.log(`Retry: Found ${retrySlots.length} inventory slots`);
+            
+            retrySlots.forEach(slot => {
+                slot.removeEventListener('click', handleInventoryItemClick);
+                slot.addEventListener('click', handleInventoryItemClick);
+                // Add a visual indicator that the slot is clickable for trading
+                slot.classList.add('trade-enabled');
+                // Add a simple style to highlight trade-enabled slots
+                if (!document.getElementById('trade-slot-styles')) {
+                    const style = document.createElement('style');
+                    style.id = 'trade-slot-styles';
+                    style.textContent = '.trade-enabled { box-shadow: 0 0 3px 1px rgba(46, 204, 113, 0.5); }';
+                    document.head.appendChild(style);
+                }
+            });
+        }, 500);
+    }
+    
+    inventorySlots.forEach((slot, index) => {
+        console.log(`Setting up click handler for slot ${index}`);
+        // Remove any existing click handler first to prevent duplicates
+        slot.removeEventListener('click', handleInventoryItemClick);
+        // Add new click handler
+        slot.addEventListener('click', handleInventoryItemClick);
+        // Add a visual indicator that the slot is clickable for trading
+        slot.classList.add('trade-enabled');
+        // Add a simple style to highlight trade-enabled slots
+        if (!document.getElementById('trade-slot-styles')) {
+            const style = document.createElement('style');
+            style.id = 'trade-slot-styles';
+            style.textContent = '.trade-enabled { box-shadow: 0 0 3px 1px rgba(46, 204, 113, 0.5); }';
+            document.head.appendChild(style);
+        }
+    });
+}
+
+/**
+ * Handle clicks on inventory items during trade
+ * @param {MouseEvent} event - The click event
+ */
+function handleInventoryItemClick(event) {
+    // Only process if trade window is active
+    if (!activeTrade) {
+        console.log('No active trade, ignoring inventory click');
+        return;
+    }
+    
+    const slot = event.currentTarget;
+    const slotIndex = parseInt(slot.dataset.slotIndex);
+    console.log('Inventory slot clicked:', slotIndex);
+    
+    // Find local player entity to get inventory
+    // Try different ways to access the world
+    let world = window.gameWorld;
+    if (!world) {
+        console.log('Trying to find world through window.world');
+        world = window.world;
+    }
+    
+    if (!world) {
+        console.error('Cannot access game world, trying direct inventory access');
+        // Try to access inventory items directly from the slot
+        const itemElement = slot.querySelector('.inventory-item');
+        if (itemElement) {
+            // Extract basic item info from the element
+            const itemName = itemElement.getAttribute('data-name') || 'Unknown Item';
+            const itemId = parseInt(itemElement.getAttribute('data-id') || '0');
+            const itemDesc = itemElement.getAttribute('data-description') || '';
+            
+            const mockItem = {
+                id: itemId,
+                name: itemName,
+                description: itemDesc
+            };
+            
+            // Check if this item is already offered
+            const alreadyOffered = activeTrade.localItems.some(offeredItem => 
+                offeredItem.inventoryIndex === slotIndex
+            );
+            
+            if (alreadyOffered) {
+                // Find the index of the offered item
+                const offeredIndex = activeTrade.localItems.findIndex(offeredItem => 
+                    offeredItem.inventoryIndex === slotIndex
+                );
+                
+                // Remove from offered items
+                removeOfferedItem(offeredIndex);
+                
+                // Show item back in inventory
+                showItemInInventory(slotIndex);
+            } else {
+                // Add to offered items
+                offerItem(slotIndex, mockItem);
+                
+                // Hide item from inventory
+                hideItemInInventory(slotIndex);
+            }
+            return;
+        } else {
+            console.error('No item found in this slot');
+            return;
+        }
+    }
+    
+    const localPlayerEntity = world.entities.find(entity => 
+        entity.active && 
+        entity.hasComponent('PlayerComponent') && 
+        entity.getComponent('PlayerComponent').isLocalPlayer
+    );
+    
+    if (!localPlayerEntity) {
+        console.error('Local player entity not found');
+        return;
+    }
+    
+    // Get the item from the inventory
+    const inventoryComponent = localPlayerEntity.getComponent('InventoryComponent');
+    if (!inventoryComponent) {
+        console.error('Inventory component not found on player');
+        return;
+    }
+    
+    const item = inventoryComponent.slots[slotIndex];
+    
+    // If slot is empty, do nothing
+    if (!item) {
+        console.log('Empty slot clicked');
+        return;
+    }
+    
+    console.log('Found item in inventory:', item);
+    
+    // Check if this item is already offered
+    const alreadyOffered = activeTrade.localItems.some(offeredItem => 
+        offeredItem.inventoryIndex === slotIndex
+    );
+    
+    if (alreadyOffered) {
+        console.log('Item already offered, removing from trade');
+        // Find the index of the offered item
+        const offeredIndex = activeTrade.localItems.findIndex(offeredItem => 
+            offeredItem.inventoryIndex === slotIndex
+        );
+        
+        // Remove from offered items
+        removeOfferedItem(offeredIndex);
+        
+        // Show item back in inventory
+        showItemInInventory(slotIndex);
+    } else {
+        console.log('Adding item to trade offer');
+        // Add to offered items
+        offerItem(slotIndex, item);
+        
+        // Hide item from inventory
+        hideItemInInventory(slotIndex);
+    }
+}
+
+/**
+ * Hide an item in the inventory (visually) when it's added to trade
+ * @param {number} slotIndex - Index of the slot in inventory
+ */
+function hideItemInInventory(slotIndex) {
+    const slot = document.querySelector(`.inventory-slot[data-slot-index="${slotIndex}"]`);
+    if (!slot) return;
+    
+    // Find the item display within the slot
+    const itemDisplay = slot.querySelector('.inventory-item');
+    if (itemDisplay) {
+        // Add a 'traded' class and reduce opacity
+        itemDisplay.classList.add('traded');
+        itemDisplay.style.opacity = '0.3';
+    }
+}
+
+/**
+ * Show an item back in the inventory when removed from trade
+ * @param {number} slotIndex - Index of the slot in inventory
+ */
+function showItemInInventory(slotIndex) {
+    const slot = document.querySelector(`.inventory-slot[data-slot-index="${slotIndex}"]`);
+    if (!slot) return;
+    
+    // Find the item display within the slot
+    const itemDisplay = slot.querySelector('.inventory-item');
+    if (itemDisplay) {
+        // Remove 'traded' class and restore opacity
+        itemDisplay.classList.remove('traded');
+        itemDisplay.style.opacity = '1';
+    }
+}
+
+/**
+ * Set up right-click context menu for inventory items
+ */
+function setupInventoryContextMenu() {
+    // Find all inventory slots in the game UI (not in the trade window)
+    const inventorySlots = document.querySelectorAll('.inventory-slot');
+    
+    inventorySlots.forEach(slot => {
+        // Add contextmenu event listener to each slot
+        slot.addEventListener('contextmenu', handleInventoryContextMenu);
+    });
+}
+
+/**
+ * Remove context menu event listeners when trade is closed
+ */
+function removeInventoryContextMenu() {
+    // Find all inventory slots
+    const inventorySlots = document.querySelectorAll('.inventory-slot');
+    
+    // Remove both click and context menu event listeners
+    inventorySlots.forEach(slot => {
+        // Remove the contextmenu event listener
+        slot.removeEventListener('contextmenu', handleInventoryContextMenu);
+        // Also remove the click handler
+        slot.removeEventListener('click', handleInventoryItemClick);
+        
+        // Reset any visual changes from trading
+        const itemDisplay = slot.querySelector('.inventory-item');
+        if (itemDisplay && itemDisplay.classList.contains('traded')) {
+            itemDisplay.classList.remove('traded');
+            itemDisplay.style.opacity = '1';
+        }
+    });
+    
+    // Remove any existing context menus
+    const existingMenu = document.getElementById('inventory-context-menu');
+    if (existingMenu) {
+        existingMenu.remove();
+    }
+}
+
+/**
+ * Handle right-click context menu on inventory items
+ * @param {MouseEvent} event - The context menu event
+ */
+function handleInventoryContextMenu(event) {
+    event.preventDefault();
+    
+    // Check if we're in an active trade
+    if (!activeTrade || activeTrade.status !== 'active') return;
+    
+    // Get the slot index from the element's dataset
+    const slotIndex = parseInt(event.currentTarget.dataset.slotIndex);
+    if (isNaN(slotIndex)) return;
+    
+    // Find local player entity to get inventory
+    const world = window.gameWorld;
+    if (!world) return;
+    
+    const localPlayerEntity = world.entities.find(entity => 
+        entity.active && 
+        entity.hasComponent('PlayerComponent') && 
+        entity.getComponent('PlayerComponent').isLocalPlayer
+    );
+    
+    if (!localPlayerEntity || !localPlayerEntity.hasComponent('InventoryComponent')) return;
+    
+    const inventoryComponent = localPlayerEntity.getComponent('InventoryComponent');
+    const item = inventoryComponent.slots[slotIndex];
+    
+    // If there's no item in this slot, don't show the menu
+    if (!item) return;
+    
+    // Remove any existing context menu
+    const existingMenu = document.getElementById('inventory-context-menu');
+    if (existingMenu) {
+        existingMenu.remove();
+    }
+    
+    // Create context menu
+    const contextMenu = document.createElement('div');
+    contextMenu.id = 'inventory-context-menu';
+    Object.assign(contextMenu.style, {
+        position: 'fixed',
+        top: `${event.clientY}px`,
+        left: `${event.clientX}px`,
+        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        border: '1px solid rgba(255, 255, 255, 0.3)',
+        borderRadius: '4px',
+        padding: '5px',
+        zIndex: '3000',
+        color: 'white',
+        fontSize: '14px',
+        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.5)'
+    });
+    
+    // Create menu item for adding to trade
+    const addToTradeOption = document.createElement('div');
+    addToTradeOption.textContent = 'Add to Trade';
+    Object.assign(addToTradeOption.style, {
+        padding: '5px 10px',
+        cursor: 'pointer',
+        borderRadius: '2px'
+    });
+    
+    // Highlight on hover
+    addToTradeOption.addEventListener('mouseover', () => {
+        addToTradeOption.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+    });
+    addToTradeOption.addEventListener('mouseout', () => {
+        addToTradeOption.style.backgroundColor = 'transparent';
+    });
+    
+    // Add click handler to offer the item
+    addToTradeOption.addEventListener('click', () => {
+        offerItem(slotIndex, item);
+        contextMenu.remove();
+    });
+    
+    contextMenu.appendChild(addToTradeOption);
+    document.body.appendChild(contextMenu);
+    
+    // Close menu when clicking elsewhere
+    const closeContextMenu = (e) => {
+        if (!contextMenu.contains(e.target)) {
+            contextMenu.remove();
+            document.removeEventListener('click', closeContextMenu);
+        }
+    };
+    
+    // Add a small delay before adding the click listener to prevent immediate closing
+    setTimeout(() => {
+        document.addEventListener('click', closeContextMenu);
+    }, 10);
+}
+
+/**
  * Show a notification message
  * @param {string} message - The message to show
  */
@@ -1109,13 +1424,8 @@ function showNotification(message) {
  * @returns {string} The color as a CSS string
  */
 function getItemColor(itemId) {
-    // Define colors for specific item IDs
-    const colors = {
-        0: '#aaaaaa', // Default item (gray)
-        1: '#3498db'  // Basic item (blue)
-    };
-    
-    // Return specific color if defined, otherwise generate one based on ID
-    return colors[itemId] || `hsl(${(itemId * 137) % 360}, 70%, 60%)`;
+    // Generate a color based on the item ID
+    const hue = (itemId * 137) % 360;
+    return `hsl(${hue}, 70%, 60%)`;
 }
 
