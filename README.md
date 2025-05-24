@@ -10,6 +10,9 @@ A real-time multiplayer 3D application with Three.js, Socket.io, and a persisten
 - Connected user awareness
 - Inventory system with item pickup and management
 - Chat bubbles displayed above player avatars
+- Third-person camera system with controlled rotation limits
+- Context menu system for player and world interactions
+- Player-to-player trading system with item exchange
 - RESTful API endpoints for database access and monitoring
 
 ## Detailed Architecture Breakdown
@@ -74,6 +77,28 @@ A real-time multiplayer 3D application with Three.js, Socket.io, and a persisten
   - Displays chat messages above player avatars
   - Handles positioning and lifecycle of chat bubbles
   - Provides visual feedback for player communication
+
+- **`public/js/ecs/cameraSystem.js`**: Implements third-person camera:
+  - Maintains fixed distance from player while allowing full rotation
+  - Follows player movement with smooth damping
+  - Enforces vertical rotation limits for better gameplay experience
+  - Configures OrbitControls for optimal third-person perspective
+
+- **`public/js/ecs/contextMenuSystem.js`**: Implements right-click context menus:
+  - Provides contextual interactions with players, items, and the world
+  - Uses raycasting to detect clicked objects
+  - Dynamically generates menu options based on interaction target
+  - Supports player-to-player interactions like trading
+
+- **`public/js/ecs/playerEntityHelper.js`**: Utility functions for player entities:
+  - Updates player entity meshes with entity IDs for raycasting detection
+  - Facilitates player interaction through the context menu system
+
+- **`public/js/tradeSystem.js`**: Player-to-player trading functionality:
+  - Allows players to request trades with each other
+  - Provides UI for offering and accepting items
+  - Handles trade negotiation with accept/decline functionality
+  - Synchronizes trade state between players in real-time
 
 ### Server-Side Architecture
 
@@ -210,12 +235,17 @@ multiplayer-chat/
 │   │   ├── network.js           # Socket.io communication
 │   │   ├── chat.js              # Chat system management
 │   │   ├── three-setup.js       # Three.js initialization
+│   │   ├── contextMenu.js       # Context menu UI management
+│   │   ├── tradeSystem.js       # Player-to-player trading functionality
 │   │   └── ecs/                 # Entity Component System
 │   │       ├── core.js          # ECS core implementation
 │   │       ├── components.js    # Component definitions
 │   │       ├── entities.js      # Entity factory functions
 │   │       ├── systems.js       # System implementations
+│   │       ├── cameraSystem.js  # Third-person camera system
 │   │       ├── chatBubbleSystem.js # Chat bubble display system
+│   │       ├── contextMenuSystem.js # Right-click interaction system
+│   │       ├── playerEntityHelper.js # Player entity utility functions
 │   │       ├── inventoryComponents.js # Inventory component definitions
 │   │       ├── inventoryEntities.js # Inventory entity factories
 │   │       └── inventorySystem.js # Inventory management system
