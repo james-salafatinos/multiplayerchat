@@ -9,6 +9,8 @@ A real-time multiplayer 3D application with Three.js, Socket.io, and a persisten
 - Real-time chat system with persistent message storage
 - Connected user awareness
 - Inventory system with item pickup and management
+- Chat bubbles displayed above player avatars
+- RESTful API endpoints for database access and monitoring
 
 ## Detailed Architecture Breakdown
 
@@ -59,6 +61,7 @@ A real-time multiplayer 3D application with Three.js, Socket.io, and a persisten
 - **`public/js/ecs/systems.js`**: Core game systems:
   - `RenderSystem`: Renders entities with mesh components
   - `RotationSystem`: Animates rotating entities
+  - `MovementSystem`: Handles player movement and position updates
   - `NetworkSyncSystem`: Synchronizes entity states across clients
 
 - **`public/js/ecs/inventorySystem.js`**: Manages inventory interactions:
@@ -66,6 +69,11 @@ A real-time multiplayer 3D application with Three.js, Socket.io, and a persisten
   - Updates inventory UI
   - Processes drag-and-drop inventory management
   - Communicates with server for inventory actions
+
+- **`public/js/ecs/chatBubbleSystem.js`**: Manages chat bubbles:
+  - Displays chat messages above player avatars
+  - Handles positioning and lifecycle of chat bubbles
+  - Provides visual feedback for player communication
 
 ### Server-Side Architecture
 
@@ -77,6 +85,7 @@ A real-time multiplayer 3D application with Three.js, Socket.io, and a persisten
   - Handles inventory actions (pickup, drop, move)
   - Maintains world state (items, players)
   - Synchronizes data between clients
+  - Provides RESTful API endpoints for database access and monitoring
 
 ### Database Structure
 
@@ -191,7 +200,7 @@ A real-time multiplayer 3D application with Three.js, Socket.io, and a persisten
 ## Project Structure
 
 ```
-multiplayer-vibecode/
+multiplayer-chat/
 ├── public/                      # Client-side files
 │   ├── index.html               # Main HTML page
 │   ├── css/                     # CSS styles
@@ -199,24 +208,24 @@ multiplayer-vibecode/
 │   ├── js/                      # Client-side JavaScript
 │   │   ├── app.js               # Main application entry point
 │   │   ├── network.js           # Socket.io communication
-│   │   ├── chat.js              # Chat functionality
+│   │   ├── chat.js              # Chat system management
 │   │   ├── three-setup.js       # Three.js initialization
 │   │   └── ecs/                 # Entity Component System
-│   │       ├── core.js          # Core ECS functionality
-│   │       ├── entities.js      # Base entity definitions
-│   │       ├── components.js    # Base component definitions
-│   │       ├── systems.js       # Core system definitions
-│   │       ├── inventoryComponents.js # Inventory components
-│   │       ├── inventoryEntities.js   # Inventory entities
-│   │       └── inventorySystem.js     # Inventory system
-├── server/                      # Server-side code
-│   └── server.js                # Express and Socket.io server
-├── .env                         # Environment variables
-├── package.json                 # Dependencies
-├── chat.db                      # SQLite database (created on first run)
-├── PLANNING.md                  # Project planning document
-├── TASK.md                      # Task tracking
-└── README.md                    # This file
+│   │       ├── core.js          # ECS core implementation
+│   │       ├── components.js    # Component definitions
+│   │       ├── entities.js      # Entity factory functions
+│   │       ├── systems.js       # System implementations
+│   │       ├── chatBubbleSystem.js # Chat bubble display system
+│   │       ├── inventoryComponents.js # Inventory component definitions
+│   │       ├── inventoryEntities.js # Inventory entity factories
+│   │       └── inventorySystem.js # Inventory management system
+├── server/                      # Server-side files
+│   └── server.js                # Main server file
+├── chat.db                      # SQLite database file
+├── package.json                 # Node.js dependencies
+├── package-lock.json            # Dependency lock file
+├── API.md                       # API documentation
+└── README.md                    # Project documentation
 ```
 
 ## Technologies Used
@@ -262,11 +271,21 @@ For development with automatic server restart:
 npm run dev
 ```
 
+## API Documentation
+
+The application provides several RESTful API endpoints for database access and monitoring. For detailed information about these endpoints, please refer to the [API.md](API.md) file, which includes:
+
+- Database admin endpoints for messages, inventory, and world items
+- Socket.IO event documentation
+- Database schema details
+
 ## Future Enhancements
 
 - Enhanced player avatars and movement
 - Advanced world interaction mechanics
 - Expanded inventory system with crafting
+- Improved chat bubble system with customization options
+- Additional admin tools for server monitoring
 - Enhanced physics and collision detection
 - User authentication and profiles
 

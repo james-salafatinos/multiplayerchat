@@ -45,6 +45,50 @@ app.get('/admin/db/stats', (req, res) => {
   }
 });
 
+// Additional database API endpoints
+app.get('/admin/db/inventory/:playerId', (req, res) => {
+  try {
+    const { playerId } = req.params;
+    const inventory = getPlayerInventory.all(playerId);
+    res.json(inventory);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/admin/db/inventory', (req, res) => {
+  try {
+    const inventory = db.prepare('SELECT * FROM player_inventory ORDER BY player_id, slot_index').all();
+    res.json(inventory);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/admin/db/world-items', (req, res) => {
+  try {
+    const items = getWorldItems.all();
+    res.json(items);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/admin/db/players', (req, res) => {
+  try {
+    const connectedPlayers = Array.from(players.entries()).map(([id, player]) => ({
+      id,
+      username: player.username,
+      position: player.position,
+      color: player.color,
+      inventoryCount: player.inventory.filter(item => item !== null).length
+    }));
+    res.json(connectedPlayers);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Initialize SQLite database
 const db = new Database(join(__dirname, '../chat.db'));
 
