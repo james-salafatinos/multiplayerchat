@@ -6,6 +6,7 @@ import { World } from './ecs/core.js';
 import { createCube, createGround, createPlayer } from './ecs/entities.js';
 import { createBasicItem } from './ecs/inventoryEntities.js';
 import { RenderSystem, RotationSystem, MovementSystem } from './ecs/systems.js';
+import { CameraSystem } from './ecs/cameraSystem.js';
 import { ChatBubbleSystem } from './ecs/chatBubbleSystem.js';
 import { InventorySystem } from './ecs/inventorySystem.js';
 import { InventoryComponent } from './ecs/inventoryComponents.js';
@@ -68,10 +69,11 @@ document.addEventListener('DOMContentLoaded', () => {
     world.registerSystem(new MovementSystem(socket));
     world.registerSystem(new ChatBubbleSystem(scene));
     world.registerSystem(new InventorySystem(socket));
+    world.registerSystem(new CameraSystem());
     
-    // Set up camera position for better view
+    // Set up initial camera position for isometric view
     const camera = getCamera();
-    camera.position.set(0, 10, 10);
+    camera.position.set(15, 10, 15); // Position for 45-degree isometric view
     camera.lookAt(0, 0, 0);
     
     // Handle players list from server

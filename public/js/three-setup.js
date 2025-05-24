@@ -32,7 +32,16 @@ export function initThreeJS() {
     // Add orbit controls
     controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
+    controls.dampingFactor = 0.1;
+    controls.rotateSpeed = 0.8;
+    controls.zoomSpeed = 1.0;
+    controls.panSpeed = 0.8;
+    controls.minDistance = 5;
+    controls.maxDistance = 50;
+    
+    // Limit vertical rotation (in radians)
+    controls.minPolarAngle = Math.PI / 6;  // 30 degrees from top (can't look straight down)
+    controls.maxPolarAngle = Math.PI / 1.5; // 120 degrees (can't look too far up)
     
     // Add axes helper
     const axesHelper = new THREE.AxesHelper(2);
@@ -82,6 +91,14 @@ export function getCamera() {
 }
 
 /**
+ * Get the orbit controls
+ * @returns {OrbitControls} The orbit controls
+ */
+export function getControls() {
+    return controls;
+}
+
+/**
  * Get the Three.js renderer
  * @returns {THREE.WebGLRenderer} The renderer
  */
@@ -93,6 +110,9 @@ export function getRenderer() {
  * Render the scene
  */
 export function render() {
-    controls.update();
+    // Always update controls to ensure smooth damping
+    if (controls) {
+        controls.update();
+    }
     renderer.render(scene, camera);
 }

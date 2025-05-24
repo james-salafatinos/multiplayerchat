@@ -205,11 +205,90 @@ export class MovementSystem extends System {
             this.handleRemotePosition(event.detail);
         });
         
-        // Set up click handler for local player movement
+        // Set up click and drag handlers for player movement and camera control
         const renderer = getRenderer();
         if (renderer) {
-            renderer.domElement.addEventListener('click', (event) => {
-                this.handleClick(event);
+            // Track mouse state for differentiating between clicks and drags
+            this.mouseDown = false;
+            this.mouseMoved = false;
+            this.mouseDownTime = 0;
+            this.mouseDownPos = { x: 0, y: 0 };
+            
+            // Mouse down - start tracking for potential click
+            renderer.domElement.addEventListener('mousedown', (event) => {
+                this.mouseDown = true;
+                this.mouseMoved = false;
+                this.mouseDownTime = performance.now();
+                this.mouseDownPos = { x: event.clientX, y: event.clientY };
+            });
+            
+            // Mouse move - track if user is dragging
+            renderer.domElement.addEventListener('mousemove', (event) => {
+                if (this.mouseDown) {
+                    // Calculate distance moved from mouse down position
+                    const dx = Math.abs(event.clientX - this.mouseDownPos.x);
+                    const dy = Math.abs(event.clientY - this.mouseDownPos.y);
+                    
+                    // If moved more than threshold, consider it a drag (for camera rotation)
+                    if (dx > 5 || dy > 5) {
+                        this.mouseMoved = true;
+                    }
+                }
+            });
+            
+            // Mouse up - if it was a click (not a drag), handle player movement
+            renderer.domElement.addEventListener('mouseup', (event) => {
+                // Only handle as a click if:
+                // 1. Mouse was down
+                // 2. Mouse didn't move significantly (not a drag)
+                // 3. Click duration was short enough
+                const clickDuration = performance.now() - this.mouseDownTime;
+                
+                if (this.mouseDown && !this.mouseMoved && clickDuration < 300) {
+                    this.handleClick(event);
+                }
+                
+                // Reset mouse state
+                this.mouseDown = false;
+                this.mouseMoved = false;
+            });
+            
+            // Handle touch events for mobile
+            let touchStartTime = 0;
+            let touchStartPos = { x: 0, y: 0 };
+            let touchMoved = false;
+            
+            renderer.domElement.addEventListener('touchstart', (event) => {
+                if (event.touches.length === 1) {
+                    touchStartTime = performance.now();
+                    touchStartPos = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+                    touchMoved = false;
+                }
+            });
+            
+            renderer.domElement.addEventListener('touchmove', (event) => {
+                if (event.touches.length === 1) {
+                    const dx = Math.abs(event.touches[0].clientX - touchStartPos.x);
+                    const dy = Math.abs(event.touches[0].clientY - touchStartPos.y);
+                    
+                    if (dx > 10 || dy > 10) {
+                        touchMoved = true;
+                    }
+                }
+            });
+            
+            renderer.domElement.addEventListener('touchend', (event) => {
+                const touchDuration = performance.now() - touchStartTime;
+                
+                if (!touchMoved && touchDuration < 300) {
+                    // Convert touch to simulated click event
+                    const simulatedEvent = {
+                        clientX: touchStartPos.x,
+                        clientY: touchStartPos.y,
+                        target: event.target
+                    };
+                    this.handleClick(simulatedEvent);
+                }
             });
         }
     }
