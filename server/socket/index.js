@@ -113,6 +113,23 @@ export function initSocketHandlers(io, players, worldItems) {
             color: savedState.color,
             inventory: Array(28).fill(null) // Will be populated from inventory table
           };
+          
+          // Load player inventory from database
+          try {
+            const inventoryItems = statements.getPlayerInventory.all(socket.userId);
+            console.log(`Loading ${inventoryItems.length} inventory items for user ${socket.username}`);
+            
+            // Populate inventory slots with items from database
+            inventoryItems.forEach(item => {
+              newPlayer.inventory[item.slot_index] = {
+                id: item.item_id,
+                name: item.item_name,
+                description: item.item_description
+              };
+            });
+          } catch (error) {
+            console.error(`Error loading inventory for user ${socket.userId}:`, error);
+          }
         } else {
           // Authenticated but no saved state, create new with random color
           const color = `#${Math.floor(Math.random() * 16777215).toString(16)}`;
@@ -251,29 +268,49 @@ export function initSocketHandlers(io, players, worldItems) {
     socket.on('disconnect', () => {
       console.log('User disconnected:', socket.id);
       
-      // If this was an authenticated user, remove from active sockets if it's the current one
+      // If this is an authenticated user, remove their socket from the active sockets map
       if (socket.userId) {
-        // Only remove if this is the active socket for this user
+        // Only remove if this is the current active socket for this user
         if (activeUserSockets.get(socket.userId) === socket.id) {
           console.log(`Removing active socket for user ${socket.userId}`);
           activeUserSockets.delete(socket.userId);
+        }
+        
+        // Save player state to database before removing
+        const player = players.get(socket.id);
+        if (player) {
+          console.log(`Saving final state for user ${socket.userId} before disconnect.`);
           
-          // Save final state for authenticated users before removing from memory
-          const player = players.get(socket.id);
-          if (player) {
-            try {
-              // Save final position and state to database
-              statements.savePlayerState.run(
-                socket.userId,
-                player.position.x,
-                player.position.y,
-                player.position.z,
-                player.color
-              );
-              console.log(`Saved final state for user ${socket.userId} before disconnect`);
-            } catch (error) {
-              console.error(`Error saving final state for user ${socket.userId}:`, error);
-            }
+          // Save position and color
+          statements.savePlayerState.run(
+            socket.userId,
+            player.position.x,
+            player.position.y,
+            player.position.z,
+            player.color
+          );
+          
+          // Save inventory items
+          try {
+            // First clear existing inventory records for this user
+            statements.clearPlayerInventory.run(socket.userId);
+            
+            // Then save current inventory state
+            player.inventory.forEach((item, slotIndex) => {
+              if (item !== null) {
+                statements.setInventoryItem.run(
+                  socket.userId,
+                  slotIndex,
+                  item.id,
+                  item.name,
+                  item.description || ''
+                );
+              }
+            });
+            
+            console.log(`Saved inventory with ${player.inventory.filter(item => item !== null).length} items for user ${socket.userId}`);
+          } catch (error) {
+            console.error(`Error saving inventory for user ${socket.userId}:`, error);
           }
         }
       }

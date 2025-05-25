@@ -107,7 +107,7 @@ function handlePickup(socket, io, player, data, worldItems) {
   
   // Save item to player_inventory table in DB
   statements.setInventoryItem.run(
-    socket.id,
+    socket.userId || socket.id, // Use userId for authenticated users, socket.id for guests
     emptySlotIndex,
     itemToPickup.id,
     itemToPickup.name,
@@ -144,7 +144,7 @@ function handleDrop(socket, io, player, data, worldItems) {
     player.inventory[data.slotIndex] = null;
     
     // Remove from database
-    statements.removeInventoryItem.run(socket.id, data.slotIndex);
+    statements.removeInventoryItem.run(socket.userId || socket.id, data.slotIndex);
     
     // Create a new world item at the player's position
     const itemUuid = `item-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
@@ -206,17 +206,17 @@ function handleMove(socket, io, player, data) {
   
   // Update database - first remove both items if they exist
   if (sourceItem) {
-    statements.removeInventoryItem.run(socket.id, data.sourceSlotIndex);
+    statements.removeInventoryItem.run(socket.userId || socket.id, data.sourceSlotIndex);
   }
   
   if (targetItem) {
-    statements.removeInventoryItem.run(socket.id, data.targetSlotIndex);
+    statements.removeInventoryItem.run(socket.userId || socket.id, data.targetSlotIndex);
   }
   
   // Then add them back in their new positions
   if (sourceItem) {
     statements.setInventoryItem.run(
-      socket.id,
+      socket.userId || socket.id,
       data.targetSlotIndex,
       sourceItem.id,
       sourceItem.name,
@@ -226,7 +226,7 @@ function handleMove(socket, io, player, data) {
   
   if (targetItem) {
     statements.setInventoryItem.run(
-      socket.id,
+      socket.userId || socket.id,
       data.sourceSlotIndex,
       targetItem.id,
       targetItem.name,
