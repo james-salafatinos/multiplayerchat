@@ -2,6 +2,7 @@
 // Trade functionality for socket.io
 
 import { statements } from '../db/index.js';
+import { activeSessions } from '../routes/auth.js';
 
 // Map of active trades by trade ID
 const activeTrades = new Map();
@@ -260,6 +261,8 @@ export function initTradeHandlers(socket, io, players) {
     // Cancel any active trades involving this player
     for (const [tradeId, trade] of activeTrades.entries()) {
       if (trade.fromPlayerId === socket.id || trade.toPlayerId === socket.id) {
+        console.log(`Canceling trade ${tradeId} due to player disconnect: ${socket.id}`);
+        
         // Notify the other player
         const otherPlayerId = trade.fromPlayerId === socket.id ? trade.toPlayerId : trade.fromPlayerId;
         const otherSocket = io.sockets.sockets.get(otherPlayerId);
@@ -270,6 +273,17 @@ export function initTradeHandlers(socket, io, players) {
             toPlayerId: trade.toPlayerId,
             reason: 'Player disconnected'
           });
+          
+          // Make sure the other player's session is marked as active
+          if (otherSocket.userId) {
+            console.log(`Ensuring session for other player ${otherSocket.userId} remains active after trade cancel`);
+            // This will update the lastActivity timestamp
+            if (activeSessions.has(otherSocket.userId)) {
+              const session = activeSessions.get(otherSocket.userId);
+              session.lastActivity = Date.now();
+              activeSessions.set(otherSocket.userId, session);
+            }
+          }
         }
         
         // Remove the trade
@@ -302,6 +316,20 @@ function completeTrade(trade, io, players) {
   
   // Process the trade items
   try {
+    // Get user IDs for database operations (instead of socket IDs)
+    const fromUserId = fromPlayer.userId;
+    const toUserId = toPlayer.userId;
+    
+    // Log the user IDs for debugging
+    console.log(`Trade between users: ${fromUserId} and ${toUserId}`);
+    
+    if (!fromUserId || !toUserId) {
+      console.error('Missing user IDs for trade persistence');
+      console.log('FromPlayer:', fromPlayer);
+      console.log('ToPlayer:', toPlayer);
+      // Continue with socket IDs if user IDs not available (for guests)
+    }
+    
     // Process items from fromPlayer to toPlayer
     for (const item of trade.fromPlayerItems) {
       // Remove item from fromPlayer's inventory
@@ -319,16 +347,21 @@ function completeTrade(trade, io, players) {
       // Add item to toPlayer's inventory
       toPlayer.inventory[emptySlotIndex] = sourceItem;
       
-      // Update database
-      statements.removeInventoryItem.run(trade.fromPlayerId, item.inventoryIndex);
+      // Update database - use user IDs instead of socket IDs for persistence
+      statements.removeInventoryItem.run(
+        fromUserId || trade.fromPlayerId, 
+        item.inventoryIndex
+      );
       
       statements.setInventoryItem.run(
-        trade.toPlayerId,
+        toUserId || trade.toPlayerId,
         emptySlotIndex,
         sourceItem.id,
         sourceItem.name,
         sourceItem.description || ''
       );
+      
+      console.log(`Moved item from user ${fromUserId || trade.fromPlayerId} to user ${toUserId || trade.toPlayerId}`);
     }
     
     // Process items from toPlayer to fromPlayer
@@ -348,16 +381,21 @@ function completeTrade(trade, io, players) {
       // Add item to fromPlayer's inventory
       fromPlayer.inventory[emptySlotIndex] = sourceItem;
       
-      // Update database
-      statements.removeInventoryItem.run(trade.toPlayerId, item.inventoryIndex);
+      // Update database - use user IDs instead of socket IDs for persistence
+      statements.removeInventoryItem.run(
+        toUserId || trade.toPlayerId, 
+        item.inventoryIndex
+      );
       
       statements.setInventoryItem.run(
-        trade.fromPlayerId,
+        fromUserId || trade.fromPlayerId,
         emptySlotIndex,
         sourceItem.id,
         sourceItem.name,
         sourceItem.description || ''
       );
+      
+      console.log(`Moved item from user ${toUserId || trade.toPlayerId} to user ${fromUserId || trade.fromPlayerId}`);
     }
     
     // Notify both players of the trade completion

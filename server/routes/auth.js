@@ -14,13 +14,14 @@ const activeSessions = new Map();
 function isUserLoggedIn(userId) {
     if (!activeSessions.has(userId)) return false;
     
-    // Check if the session is still active (within last 2 minutes)
+    // Check if the session is still active (within last 5 minutes)
     const session = activeSessions.get(userId);
     const now = Date.now();
     const sessionAge = now - session.lastActivity;
     
-    // If session is older than 2 minutes, consider it inactive
-    if (sessionAge > 2 * 60 * 1000) {
+    // If session is older than 5 minutes, consider it inactive
+    if (sessionAge > 5 * 60 * 1000) {
+        console.log(`Session for user ${userId} expired due to inactivity (${sessionAge}ms)`); 
         activeSessions.delete(userId);
         return false;
     }

@@ -116,8 +116,9 @@ export function initSocketHandlers(io, players, worldItems) {
           
           // Load player inventory from database
           try {
+            // Make sure we're using the userId for database queries
             const inventoryItems = statements.getPlayerInventory.all(socket.userId);
-            console.log(`Loading ${inventoryItems.length} inventory items for user ${socket.username}`);
+            console.log(`Loading ${inventoryItems.length} inventory items for user ${socket.username} (ID: ${socket.userId})`);
             
             // Populate inventory slots with items from database
             inventoryItems.forEach(item => {
@@ -274,6 +275,12 @@ export function initSocketHandlers(io, players, worldItems) {
         if (activeUserSockets.get(socket.userId) === socket.id) {
           console.log(`Removing active socket for user ${socket.userId}`);
           activeUserSockets.delete(socket.userId);
+          
+          // Force session cleanup from activeSessions map to prevent "already logged in" issues
+          if (activeSessions.has(socket.userId)) {
+            console.log(`Forcibly cleaning up session for user ${socket.userId} on disconnect`);
+            activeSessions.delete(socket.userId);
+          }
         }
         
         // Save player state to database before removing
