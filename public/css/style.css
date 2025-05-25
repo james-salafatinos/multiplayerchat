@@ -63,11 +63,19 @@ body {
 }
 
 .message {
-    padding: 8px 10px;
-    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 4px 0;
+    border-radius: 12px;
     max-width: 85%;
     word-break: break-word;
     animation: fadeIn 0.3s ease-in-out;
+    background-color: rgba(42, 42, 64, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.message:hover {
+    background-color: rgba(42, 42, 80, 0.9);
 }
 
 @keyframes fadeIn {
@@ -80,19 +88,27 @@ body {
     justify-content: space-between;
     margin-bottom: 4px;
     font-size: 0.75rem;
+    align-items: baseline;
 }
 
 .username {
     font-weight: bold;
     color: #e94560;
+    margin-right: 8px;
+    font-size: 0.9em;
 }
 
 .timestamp {
-    color: #888;
+    color: #666;
+    font-size: 0.7em;
+    opacity: 0.8;
 }
 
 .message-content {
-    font-size: 0.9rem;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    word-wrap: break-word;
+    white-space: pre-wrap;
 }
 
 .system-message {
@@ -111,30 +127,37 @@ body {
     padding: 10px;
     background-color: #16213e;
     border-top: 1px solid #444;
-    gap: 5px;
-}
-
-#username-input {
-    width: 30%;
-    padding: 8px;
-    border-radius: 4px;
-    border: 1px solid #444;
-    background-color: #2a2a40;
-    color: #e6e6e6;
-    transition: border-color 0.3s;
+    gap: 8px;
 }
 
 #chat-input {
     flex: 1;
-    padding: 8px;
+    padding: 8px 12px;
     border-radius: 4px;
     border: 1px solid #444;
     background-color: #2a2a40;
     color: #e6e6e6;
-    transition: border-color 0.3s;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+    resize: none;
+    min-height: 40px;
+    max-height: 120px;
+    overflow-y: auto;
+    line-height: 1.4;
+    font-family: inherit;
 }
 
-#username-input:focus, #chat-input:focus {
+#chat-input:focus {
+    outline: none;
+    border-color: #e94560;
+    box-shadow: 0 0 0 2px rgba(233, 69, 96, 0.2);
+}
+
+#chat-input::placeholder {
+    color: #666;
+}
+
+#chat-input:focus {
     outline: none;
     border-color: #e94560;
 }

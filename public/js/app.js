@@ -1,6 +1,7 @@
 // Main application entry point
 import { initThreeJS, getScene, getCamera } from './three-setup.js';
 import { initNetwork, getSocket, getLocalPlayerId } from './network.js';
+import { getCurrentUser } from './auth/auth.js';
 import { initChat } from './chat.js';
 import { handleTradeRequest, handleTradeRequestResponse } from './tradeSystem.js';
 import { World } from './ecs/core.js';
@@ -58,6 +59,21 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initialize chat system
     initChat(socket);
+    
+    // Get the current user and dispatch authenticated event
+    const currentUser = getCurrentUser();
+    if (currentUser && currentUser.username) {
+        console.log('Dispatching player-authenticated event for user:', currentUser.username);
+        document.dispatchEvent(new CustomEvent('player-authenticated', { 
+            detail: { username: currentUser.username } 
+        }));
+        
+        // Enable chat input
+        const chatInput = document.getElementById('chat-input');
+        if (chatInput) {
+            chatInput.disabled = false;
+        }
+    }
 
     // Create a cube entity using ECS
     const cube = createCube(world, { position: { x: 0, y: 1, z: 0 } });

@@ -1,30 +1,68 @@
+// Import required modules
+import { getLocalPlayerId } from './network.js';
+
 // Chat functionality
 const messageContainer = document.getElementById('chat-messages');
-const usernameInput = document.getElementById('username-input');
 const chatInput = document.getElementById('chat-input');
 const sendButton = document.getElementById('send-button');
+const usernameInput = { value: '' }; // Placeholder for compatibility
 
 // Store chat messages locally
 let chatHistory = [];
+
+// Track authenticated username
+let authenticatedUsername = '';
+let localPlayerId = null; // Will be set when the player is authenticated
 
 /**
  * Initialize the chat system
  * @param {Object} socket - The Socket.io instance
  */
 export function initChat(socket) {
-    // Enable chat input when username is entered
-    usernameInput.addEventListener('input', validateInputs);
+    // Listen for authentication event to get the username
+    document.addEventListener('player-authenticated', (event) => {
+        authenticatedUsername = event.detail.username;
+        localPlayerId = getLocalPlayerId();
+        console.log('Chat system authenticated as:', authenticatedUsername, 'with player ID:', localPlayerId);
+        
+        // Enable chat input now that we have a username
+        chatInput.disabled = false;
+        chatInput.focus();
+        
+        // Add welcome message
+        addMessageToChat({
+            type: 'system',
+            content: `Welcome, ${authenticatedUsername}! Type a message to start chatting.`,
+            timestamp: new Date().toISOString()
+        });
+    });
     
     // Send message on button click
     sendButton.addEventListener('click', () => {
         sendMessage(socket);
     });
     
-    // Send message on Enter key
+    // Send message on Enter key (without Shift)
     chatInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
             sendMessage(socket);
         }
+    });
+    
+    // Allow Shift+Enter for new lines
+    chatInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.shiftKey) {
+            // Allow default behavior (new line)
+            return true;
+        }
+    });
+    
+    // Auto-resize textarea based on content
+    chatInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+        validateMessage();
     });
     
     // Handle received chat messages
@@ -57,20 +95,12 @@ export function initChat(socket) {
 }
 
 /**
- * Validate inputs to enable/disable the send button
+ * Validate the chat message input
  */
-function validateInputs() {
-    const username = usernameInput.value.trim();
-    const hasUsername = username.length > 0;
-    
-    // Enable/disable chat input based on username
-    chatInput.disabled = !hasUsername;
-    sendButton.disabled = !hasUsername || chatInput.value.trim().length === 0;
-    
-    // Listen for changes to chat input
-    chatInput.addEventListener('input', () => {
-        sendButton.disabled = chatInput.value.trim().length === 0 || !hasUsername;
-    });
+function validateMessage() {
+    const hasMessage = chatInput.value.trim().length > 0;
+    // Update send button state
+    sendButton.disabled = !hasMessage || !authenticatedUsername;
 }
 
 /**
@@ -78,12 +108,15 @@ function validateInputs() {
  * @param {Object} socket - The Socket.io instance
  */
 function sendMessage(socket) {
-    const username = usernameInput.value.trim();
     const content = chatInput.value.trim();
     
-    if (username && content) {
+    if (authenticatedUsername && content) {
         // Send message to server
-        socket.emit('chat message', { username, content });
+        socket.emit('chat message', { 
+            username: authenticatedUsername, 
+            content: content,
+            playerId: localPlayerId // Include player ID for chat bubbles
+        });
         
         // Clear input field
         chatInput.value = '';
