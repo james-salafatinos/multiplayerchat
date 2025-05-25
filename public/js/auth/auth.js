@@ -1,4 +1,6 @@
 // Authentication module for client-side application
+import { setAuthenticatedUser } from '../network.js';
+
 let currentUser = null;
 
 /**
@@ -82,4 +84,7 @@ export async function logout() {
 export function setCurrentUser(user) {
     currentUser = user;
     localStorage.setItem('user', JSON.stringify(user));
+    
+    // Update the authenticated user in the network module
+    setAuthenticatedUser(user);
 }

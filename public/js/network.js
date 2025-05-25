@@ -2,14 +2,31 @@
 let socket;
 let userCount = 0;
 let localPlayerId = null;
+let authenticatedUser = null;
 
 /**
  * Initialize the Socket.io connection
  * @returns {Object} The socket instance
  */
 export function initNetwork() {
-    // Connect to the server
-    socket = io();
+    // Connect to the server with auth data if available
+    const userData = localStorage.getItem('user');
+    let authData = {};
+    
+    if (userData) {
+        try {
+            authenticatedUser = JSON.parse(userData);
+            authData.userData = authenticatedUser;
+            console.log('Connecting with authenticated user data:', authenticatedUser.username);
+        } catch (error) {
+            console.error('Error parsing user data from localStorage:', error);
+        }
+    }
+    
+    // Connect to socket server with auth data
+    socket = io({
+        auth: authData
+    });
     
     // Handle connection
     socket.on('connect', () => {
@@ -155,6 +172,31 @@ export function getSocket() {
  */
 export function getLocalPlayerId() {
     return localPlayerId;
+}
+
+/**
+ * Set the authenticated user data
+ * @param {Object} user - The authenticated user object
+ */
+export function setAuthenticatedUser(user) {
+    authenticatedUser = user;
+    
+    // If socket is already connected, authenticate the user
+    if (socket && socket.connected) {
+        console.log('Socket already connected, authenticating user:', user.username);
+        socket.emit('authenticate', {
+            username: user.username,
+            userId: user.id
+        });
+    }
+}
+
+/**
+ * Get the authenticated user
+ * @returns {Object|null} The authenticated user object
+ */
+export function getAuthenticatedUser() {
+    return authenticatedUser;
 }
 
 /**
