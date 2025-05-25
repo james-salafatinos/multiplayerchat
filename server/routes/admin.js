@@ -87,6 +87,66 @@ router.get('/db/players', (req, res) => {
   }
 });
 
+// Get all messages
+router.get('/db/tables/messages', (req, res) => {
+  try {
+    const messages = db.prepare('SELECT * FROM messages ORDER BY timestamp DESC').all();
+    res.json(messages);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all player inventory items
+router.get('/db/tables/player_inventory', (req, res) => {
+  try {
+    const items = db.prepare('SELECT * FROM player_inventory ORDER BY player_id, slot_index').all();
+    res.json(items);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all world items
+router.get('/db/tables/world_items', (req, res) => {
+  try {
+    const items = db.prepare('SELECT * FROM world_items').all();
+    res.json(items);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all users
+router.get('/db/tables/users', (req, res) => {
+  try {
+    const users = db.prepare('SELECT id, username, created_at, last_login FROM users').all();
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all player data
+router.get('/db/tables/player_data', (req, res) => {
+  try {
+    const playerData = db.prepare('SELECT * FROM player_data').all();
+    res.json(playerData);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all player states
+router.get('/db/tables/player_state', (req, res) => {
+  try {
+    const playerStates = db.prepare('SELECT * FROM player_state').all();
+    res.json(playerStates);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get all data from all tables
 router.get('/db/all-tables', (req, res) => {
   try {
