@@ -7,6 +7,53 @@ import { statements } from '../db/index.js';
 
 const router = express.Router();
 
+// Track active sessions: { userId: { sessionId, lastActivity } }
+const activeSessions = new Map();
+
+// Helper to check if user is already logged in elsewhere
+function isUserLoggedIn(userId) {
+    if (!activeSessions.has(userId)) return false;
+    
+    // Check if the session is still active (within last 2 minutes)
+    const session = activeSessions.get(userId);
+    const now = Date.now();
+    const sessionAge = now - session.lastActivity;
+    
+    // If session is older than 2 minutes, consider it inactive
+    if (sessionAge > 2 * 60 * 1000) {
+        activeSessions.delete(userId);
+        return false;
+    }
+    
+    return true;
+}
+
+// Helper to end a user's session
+function endUserSession(userId) {
+    if (activeSessions.has(userId)) {
+        const session = activeSessions.get(userId);
+        activeSessions.delete(userId);
+        return session.sessionId;
+    }
+    return null;
+}
+
+// Helper to update session activity
+function updateSessionActivity(userId, sessionId) {
+    if (activeSessions.has(userId)) {
+        const session = activeSessions.get(userId);
+        if (session.sessionId === sessionId) {
+            session.lastActivity = Date.now();
+            activeSessions.set(userId, session);
+            return true;
+        }
+    }
+    return false;
+}
+
+// Export for socket.io to use
+export { isUserLoggedIn, endUserSession, updateSessionActivity, activeSessions };
+
 // User signup
 router.post('/signup', async (req, res) => {
   try {
@@ -60,6 +107,21 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
+    // Check if user is already logged in elsewhere
+    if (isUserLoggedIn(user.id)) {
+      // Don't allow multiple logins - return error
+      return res.status(403).json({
+        error: 'Account already in use',
+        message: 'This account is currently logged in on another device or browser. Please log out from there first.'
+      });
+    }
+    
+    // Track this session with timestamp
+    activeSessions.set(user.id, {
+      sessionId: req.sessionID,
+      lastActivity: Date.now()
+    });
+    
     // Update last login time
     statements.updateLastLogin.run(user.id);
     
@@ -86,6 +148,38 @@ router.post('/login', async (req, res) => {
 // Check authentication status
 router.get('/status', (req, res) => {
   if (req.session.user) {
+    // Verify this session is still the active one for this user
+    const userId = req.session.user.id;
+    
+    // First check if user has any active session
+    if (!activeSessions.has(userId)) {
+      // No active session found
+      req.session.destroy();
+      return res.json({
+        authenticated: false,
+        sessionEnded: true,
+        message: 'Your session has expired. Please log in again.'
+      });
+    }
+    
+    // Get the active session
+    const session = activeSessions.get(userId);
+    
+    // Check if this is the active session
+    if (session.sessionId !== req.sessionID) {
+      // This session is not the active one
+      req.session.destroy();
+      return res.json({
+        authenticated: false,
+        sessionEnded: true,
+        message: 'This session has been terminated because you logged in from another location.'
+      });
+    }
+    
+    // Update the session activity timestamp
+    session.lastActivity = Date.now();
+    activeSessions.set(userId, session);
+    
     res.json({
       authenticated: true,
       user: req.session.user
@@ -99,11 +193,25 @@ router.get('/status', (req, res) => {
 
 // User logout
 router.post('/logout', (req, res) => {
-  req.session.destroy(err => {
-    if (err) {
-      return res.status(500).json({ error: 'Failed to logout' });
+  if (req.session.user) {
+    const userId = req.session.user.id;
+    
+    // Only remove the session if it's the active one
+    if (activeSessions.has(userId)) {
+      const session = activeSessions.get(userId);
+      if (session.sessionId === req.sessionID) {
+        activeSessions.delete(userId);
+        console.log(`User ${userId} logged out and session removed`);
+      }
     }
-    res.json({ success: true, message: 'Logged out successfully' });
+  }
+  
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Error destroying session:', err);
+      return res.status(500).json({ error: 'Error logging out' });
+    }
+    res.json({ success: true });
   });
 });
 

@@ -46,16 +46,33 @@
         
         // Check if user is authenticated
         async function checkAuth() {
-            await initAuth();
-            
-            if (!isAuthenticated()) {
-                // Redirect to login page if not authenticated
-                window.location.href = '/login.html';
+            try {
+                await initAuth();
+                
+                if (!isAuthenticated()) {
+                    // Only redirect to login if we're not already on the login page
+                    if (!window.location.pathname.endsWith('login.html')) {
+                        window.location.href = '/login.html';
+                    }
+                    return false;
+                }
+                return true;
+            } catch (error) {
+                console.error('Authentication error:', error);
+                if (!window.location.pathname.endsWith('login.html')) {
+                    window.location.href = '/login.html';
+                }
+                return false;
             }
         }
         
         // Run auth check when page loads
-        checkAuth();
+        checkAuth().then(isAuth => {
+            if (isAuth) {
+                // Only initialize the app if we're authenticated
+                console.log('User is authenticated, initializing app...');
+            }
+        });
         
         // Set up logout button functionality
         document.addEventListener('DOMContentLoaded', () => {

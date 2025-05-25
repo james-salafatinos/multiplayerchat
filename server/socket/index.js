@@ -6,6 +6,7 @@ import { initInventoryHandlers } from './inventory.js';
 import { initPlayerHandlers } from './player.js';
 import { initTradeHandlers, activeTrades } from './trade.js';
 import { statements } from '../db/index.js';
+import { isUserLoggedIn, updateSessionActivity, activeSessions } from '../routes/auth.js';
 
 /**
  * Initialize all socket handlers
@@ -19,6 +20,31 @@ export function initSocketHandlers(io, players, worldItems) {
     // Get user data from handshake
     const userData = socket.handshake.auth.userData;
     if (userData && userData.id) {
+      // Check if this user is already logged in with an active session
+      if (isUserLoggedIn(userData.id)) {
+        // Get the active session
+        const session = activeSessions.get(userData.id);
+        
+        // Check if this socket is associated with the active session
+        // We'll use the session ID from the cookie
+        const cookies = socket.handshake.headers.cookie;
+        if (cookies) {
+          const sessionMatch = cookies.match(/connect\.sid=([^;]+)/);
+          if (sessionMatch) {
+            const sessionId = decodeURIComponent(sessionMatch[1]).split('.')[0].slice(2);
+            
+            // If this is not the active session, reject the connection
+            if (session.sessionId !== sessionId) {
+              console.log(`Rejecting socket connection for user ${userData.id} - already logged in elsewhere`);
+              return next(new Error('You are already logged in on another device or browser'));
+            }
+            
+            // Update session activity
+            updateSessionActivity(userData.id, sessionId);
+          }
+        }
+      }
+      
       // If we have user data, associate it with the socket
       socket.userId = userData.id;
       socket.username = userData.username;

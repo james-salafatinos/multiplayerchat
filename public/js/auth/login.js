@@ -30,7 +30,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             
             if (!response.ok) {
-                showError(data.error || 'Login failed');
+                // Special handling for account already in use
+                if (data.error === 'Account already in use') {
+                    showError(data.message || 'This account is currently in use on another device or browser');
+                } else {
+                    showError(data.error || 'Login failed');
+                }
                 return;
             }
             
@@ -58,16 +63,30 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Check if user is already authenticated
     async function checkAuthStatus() {
+        // Don't redirect if we're already on the login page
+        if (window.location.pathname.endsWith('login.html')) {
+            return;
+        }
+        
         try {
             const response = await fetch('/api/auth/status');
             const data = await response.json();
             
             if (data.authenticated) {
-                // User is already logged in, redirect to game
-                window.location.href = '/';
+                // Only redirect if we're not already on the root path
+                if (!window.location.pathname.endsWith('/')) {
+                    window.location.href = '/';
+                }
+            } else {
+                // If not authenticated and not on login page, redirect to login
+                window.location.href = '/login.html';
             }
         } catch (error) {
             console.error('Error checking auth status:', error);
+            // On error, redirect to login page if not already there
+            if (!window.location.pathname.endsWith('login.html')) {
+                window.location.href = '/login.html';
+            }
         }
     }
 });
