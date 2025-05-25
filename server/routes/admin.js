@@ -7,9 +7,11 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { db, statements } from '../db/index.js';
 
-const router = express.Router();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Create a function that returns a router with access to the players Map
+export default function createAdminRouter(players) {
+  const router = express.Router();
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
 
 // Get all messages
 router.get('/db/messages', (req, res) => {
@@ -71,12 +73,64 @@ router.get('/db/world-items', (req, res) => {
 // Get connected players
 router.get('/db/players', (req, res) => {
   try {
-    // This route depends on the players Map, which will be passed from the main server
-    // We'll implement this in the main server.js file
-    res.status(501).json({ error: 'Not implemented in this module' });
+    const connectedPlayers = Array.from(players.entries()).map(([id, player]) => ({
+      id,
+      username: player.username,
+      position: player.position,
+      color: player.color,
+      inventoryCount: player.inventory ? player.inventory.filter(item => item !== null).length : 0
+    }));
+    res.json(connectedPlayers);
   } catch (error) {
+    console.error('Error getting connected players:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-export default router;
+// Get all data from all tables
+router.get('/db/all-tables', (req, res) => {
+  try {
+    // Get list of all tables
+    const tables = db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+    ).all();
+
+    // Fetch all data from each table
+    const result = {};
+    
+    for (const { name } of tables) {
+      try {
+        // Use a prepared statement to safely query each table
+        // First verify the table exists and is not a system table
+        const tableInfo = db.prepare(`PRAGMA table_info(${name})`).all();
+        if (tableInfo && tableInfo.length > 0) {
+          // If we can get table info, it's safe to query
+          result[name] = db.prepare(`SELECT * FROM "${name}"`).all();
+        }
+      } catch (error) {
+        console.error(`Error fetching data from table ${name}:`, error);
+        result[name] = { 
+          error: `Failed to fetch data: ${error.message}`,
+          details: error.toString()
+        };
+      }
+    }
+
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      tables: Object.keys(result),
+      data: result
+    });
+  } catch (error) {
+    console.error('Error fetching all tables:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: 'Failed to fetch database tables'
+    });
+  }
+});
+
+  return router;
+}

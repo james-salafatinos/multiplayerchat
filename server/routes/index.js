@@ -3,14 +3,17 @@
 
 import express from 'express';
 import authRoutes from './auth.js';
-import adminRoutes from './admin.js';
+import createAdminRouter from './admin.js';
 
-const router = express.Router();
+// Create a function that returns a router with all routes
+export default function createRouter(players) {
+  const router = express.Router();
 
-// Mount auth routes
-router.use('/auth', authRoutes);
+  // Mount auth routes
+  router.use('/auth', authRoutes);
 
-// Mount admin routes
-router.use('/admin', adminRoutes);
+  // Mount admin routes with players access
+  router.use('/admin', createAdminRouter(players));
 
-export default router;
+  return router;
+}

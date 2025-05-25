@@ -2,13 +2,17 @@
 
 This document outlines the available API endpoints for the multiplayer chat application.
 
+## API Base URL
+
+All API endpoints are prefixed with `/api` (e.g., `/api/admin/db/messages`).
+
 ## Database Admin Endpoints
 
 These endpoints provide access to database information and statistics.
 
 ### Messages
 
-**Endpoint:** `GET /admin/db/messages`
+**Endpoint:** `GET /api/admin/db/messages`
 
 **Description:** Returns all chat messages stored in the database, ordered by timestamp in descending order.
 
@@ -27,7 +31,7 @@ These endpoints provide access to database information and statistics.
 
 ### Database Statistics
 
-**Endpoint:** `GET /admin/db/stats`
+**Endpoint:** `GET /api/admin/db/stats`
 
 **Description:** Returns statistics about the database, including message count, latest message, database path, and available tables.
 
@@ -52,7 +56,7 @@ These endpoints provide access to database information and statistics.
 
 ### Player Inventory (Specific Player)
 
-**Endpoint:** `GET /admin/db/inventory/:playerId`
+**Endpoint:** `GET /api/admin/db/inventory/:playerId`
 
 **Description:** Returns the inventory items for a specific player.
 
@@ -76,7 +80,7 @@ These endpoints provide access to database information and statistics.
 
 ### All Player Inventories
 
-**Endpoint:** `GET /admin/db/inventory`
+**Endpoint:** `GET /api/admin/db/inventory`
 
 **Description:** Returns inventory items for all players, ordered by player ID and slot index.
 
@@ -97,7 +101,7 @@ These endpoints provide access to database information and statistics.
 
 ### World Items
 
-**Endpoint:** `GET /admin/db/world-items`
+**Endpoint:** `GET /api/admin/db/world-items`
 
 **Description:** Returns all items currently in the game world.
 
@@ -120,9 +124,9 @@ These endpoints provide access to database information and statistics.
 
 ### Connected Players
 
-**Endpoint:** `GET /admin/db/players`
+**Endpoint:** `GET /api/admin/db/players`
 
-**Description:** Returns information about all currently connected players.
+**Description:** Returns information about all currently connected players. This endpoint provides real-time data about players currently connected to the server, including their positions, usernames, and inventory counts.
 
 **Response:**
 ```json
@@ -140,6 +144,75 @@ These endpoints provide access to database information and statistics.
   },
   ...
 ]
+```
+
+**Notes:**
+- The `id` field corresponds to the player's socket ID
+- `position` contains the player's current 3D coordinates in the game world
+- `color` is a numeric representation of the player's color
+- `inventoryCount` shows the number of non-null items in the player's inventory
+
+### All Database Tables
+
+**Endpoint:** `GET /api/admin/db/all-tables`
+
+**Description:** Returns all data from all tables in the database. This endpoint provides a complete dump of all data across all tables, which can be useful for backups or administrative purposes.
+
+**Response:**
+```json
+{
+  "success": true,
+  "timestamp": "2025-05-25T20:19:31.000Z",
+  "tables": ["messages", "player_inventory", "world_items"],
+  "data": {
+    "messages": [
+      {
+        "id": 1,
+        "username": "Player-1234",
+        "content": "Hello world!",
+        "timestamp": "2025-05-23T19:15:00.000Z"
+      }
+    ],
+    "player_inventory": [
+      {
+        "id": 1,
+        "player_id": "socket123",
+        "slot_index": 0,
+        "item_id": 1,
+        "item_name": "Sword",
+        "item_description": "A sharp sword"
+      }
+    ],
+    "world_items": [
+      {
+        "id": 1,
+        "item_uuid": "item-1",
+        "item_id": 1,
+        "item_name": "Health Potion",
+        "item_description": "Restores 50 health points",
+        "position_x": 10.5,
+        "position_y": 0,
+        "position_z": 15.2
+      }
+    ]
+  }
+}
+```
+
+**Notes:**
+- The response includes a `success` flag indicating if the operation was successful
+- `timestamp` shows when the data was retrieved
+- `tables` array lists all tables included in the response
+- `data` object contains the actual table data, keyed by table name
+- If there's an error reading a specific table, that table's entry will contain an error message instead of its data
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "error": "Error message here",
+  "message": "Failed to fetch database tables"
+}
 ```
 
 ## Socket.IO Events

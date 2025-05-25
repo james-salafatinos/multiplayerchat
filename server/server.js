@@ -13,7 +13,7 @@ import dotenv from 'dotenv';
 // Import modules
 import config from './config/index.js';
 import { db } from './db/index.js';
-import apiRoutes from './routes/index.js';
+import createRouter from './routes/index.js';
 import { initSocketHandlers, activeTrades } from './socket/index.js';
 import { initializeWorldItems } from './utils/worldItems.js';
 
@@ -44,27 +44,12 @@ app.use(session({
   cookie: config.session.cookie
 }));
 
-// Mount API routes
-app.use('/api', apiRoutes);
-
-// Add custom admin route that requires access to players map
-app.get('/admin/db/players', (req, res) => {
-  try {
-    const connectedPlayers = Array.from(players.entries()).map(([id, player]) => ({
-      id,
-      username: player.username,
-      position: player.position,
-      color: player.color,
-      inventoryCount: player.inventory.filter(item => item !== null).length
-    }));
-    res.json(connectedPlayers);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Track connected players and world items
 const players = new Map();
+
+// Create and mount API routes with players access
+const router = createRouter(players);
+app.use('/api', router);
 const worldItems = initializeWorldItems();
 
 // Initialize socket handlers
