@@ -3,7 +3,7 @@ import { initThreeJS, getScene, getCamera } from './three-setup.js';
 import { initNetwork, getSocket, getLocalPlayerId } from './network.js';
 import { getCurrentUser } from './auth/auth.js';
 import { initChat } from './chat.js';
-import { handleTradeRequest, handleTradeRequestResponse } from './tradeSystem.js';
+import { handleTradeRequest, handleTradeRequestResponse } from './trade/index.js';
 import { World } from './ecs/core.js';
 import { createCube, createGround, createPlayer } from './ecs/entities.js';
 import { createBasicItem } from './ecs/inventoryEntities.js';

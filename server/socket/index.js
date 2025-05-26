@@ -184,18 +184,19 @@ export function initSocketHandlers(io, players, worldItems) {
       console.log(`Created guest player: ${newPlayer.username}`);
     }
     
-    // Add default item to player's inventory if it's empty
-    if (!newPlayer.inventory[0]) {
-      newPlayer.inventory[0] = {
-        id: 0,
-        name: 'Default Item',
-        description: 'The default item that every player starts with'
-      };
-    }
+    // Only add default item for truly new players
+    // For guests: only if they don't have any items yet
+    // For registered users: only if they've never connected before (check a special flag in the database)
     
-    // Load player inventory from database if authenticated
+    // First, load inventory from database if authenticated
+    let hasConnectedBefore = false;
     if (socket.userId) {
       try {
+        // Check if player has connected before (look for a record in player_state)
+        const playerState = statements.getPlayerState.get(socket.userId.toString());
+        hasConnectedBefore = !!playerState;
+        
+        // Load inventory items
         const inventoryItems = statements.getPlayerInventory.all(socket.userId.toString());
         if (inventoryItems && inventoryItems.length > 0) {
           // Convert DB items to inventory array format
@@ -214,6 +215,20 @@ export function initSocketHandlers(io, players, worldItems) {
         console.error(`Error loading inventory for user ${socket.userId}:`, error);
       }
     }
+    
+    // Now determine if we should add a default item
+    const isFirstTimePlayer = newPlayer.isGuest ? !newPlayer.inventory.some(item => item !== null) : !hasConnectedBefore;
+    
+    if (isFirstTimePlayer) {
+      console.log(`Adding default item to first-time player: ${newPlayer.username}`);
+      newPlayer.inventory[0] = {
+        id: 0,
+        name: 'Default Item',
+        description: 'The default item that every player starts with'
+      };
+    }
+    
+    // Inventory is already loaded above for authenticated users
     
     // Add player to the players map
     players.set(socket.id, newPlayer);

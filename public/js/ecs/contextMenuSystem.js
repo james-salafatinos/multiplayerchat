@@ -5,7 +5,7 @@ import { System } from './core.js';
 import { getCamera, getScene } from '../three-setup.js';
 import { getContextMenuManager } from '../contextMenu.js';
 import * as THREE from 'three';
-import { requestTrade } from '../tradeSystem.js';
+import { requestTrade } from '../trade/index.js';
 
 /**
  * Context Menu System
