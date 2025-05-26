@@ -84,7 +84,8 @@ const statements = {
   
   // Player state statements
   getPlayerState: db.prepare('SELECT * FROM player_state WHERE user_id = ?'),
-  savePlayerState: db.prepare('INSERT OR REPLACE INTO player_state (user_id, position_x, position_y, position_z, color) VALUES (?, ?, ?, ?, ?)')
+  savePlayerState: db.prepare('INSERT OR REPLACE INTO player_state (user_id, position_x, position_y, position_z, color) VALUES (?, ?, ?, ?, ?)'),
+  updatePlayerColor: db.prepare('UPDATE player_state SET color = ? WHERE user_id = ?')
 };
 
 export { db, statements };

@@ -171,7 +171,7 @@ export function createPlayer(world, options = {}) {
         playerId: null,
         username: 'Player',
         isLocalPlayer: false,
-        color: 0x3498db,
+        color: '#3498db',
         position: new THREE.Vector3(0, 0, 0),
         ...options
     };
@@ -179,7 +179,7 @@ export function createPlayer(world, options = {}) {
     // Create geometry, material, and mesh for player
     const geometry = new THREE.BoxGeometry(0.5, 1, 0.5);
     const material = new THREE.MeshStandardMaterial({ 
-        color: config.color,
+        color: new THREE.Color(config.color),
         roughness: 0.7,
         metalness: 0.3
     });

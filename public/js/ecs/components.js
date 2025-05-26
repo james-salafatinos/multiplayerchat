@@ -114,7 +114,9 @@ export class PlayerComponent extends Component {
             playerId: null, // Socket ID of the player
             username: 'Player', // Display name of the player
             isLocalPlayer: false, // Whether this is the local player
-            color: 0x3498db, // Player color
+            color: data.color || '#3498db', // Current actual color (or default). Consider if this is needed if desiredColor is primary.
+            desiredColor: data.color || '#3498db', // The color the player should be
+            colorNeedsUpdate: true, // Flag to signal system to update mesh color
             ...data
         });
     }

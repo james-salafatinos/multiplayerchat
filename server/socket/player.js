@@ -15,7 +15,9 @@ const EVENTS = {
   PLAYER_INVENTORY: 'player inventory',
   PLAYERS_LIST: 'players list',
   WORLD_ITEMS_STATE: 'world items state',
-  USER_COUNT: 'user count'
+  USER_COUNT: 'user count',
+  PLAYER_UPDATE_COLOR: 'player:updateColor', // Client emits this
+  PLAYER_COLOR_CHANGED: 'player:colorChanged' // Server broadcasts this
 };
 
 /**
@@ -192,7 +194,7 @@ export function initPlayerHandlers(socket, io, players, worldItems) {
   });
 
   // Handle player position updates
-  socket.on('update position', (data) => {
+  socket.on(EVENTS.UPDATE_POSITION, (data) => {
     console.log('Position update received:', data);
     
     try {
@@ -267,10 +269,48 @@ export function initPlayerHandlers(socket, io, players, worldItems) {
     }
   });
 
+  // Handle player color update
+  socket.on(EVENTS.PLAYER_UPDATE_COLOR, (data) => {
+    console.log(`Color update received from ${socket.id}:`, data);
+    const player = players.get(socket.id);
+
+    if (player && player.userId && data && typeof data.color === 'string') {
+      // Basic validation for hex color format (e.g., #RRGGBB)
+      const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
+      if (!hexColorRegex.test(data.color)) {
+        console.error(`Invalid color format received from ${socket.id}: ${data.color}`);
+        // Optionally, send an error back to the client
+        // socket.emit('player:updateColorError', { message: 'Invalid color format.' });
+        return;
+      }
+
+      try {
+        // Update color in database
+        statements.updatePlayerColor.run(data.color, player.userId);
+        
+        // Update color in server memory
+        player.color = data.color;
+        console.log(`Player ${player.username} (ID: ${player.userId}, Socket: ${socket.id}) color updated to ${data.color}`);
+
+        // Broadcast the color change to other clients
+        socket.broadcast.emit(EVENTS.PLAYER_COLOR_CHANGED, {
+          id: socket.id, // Client-side app.js expects 'id' for player identifier
+          color: data.color
+        });
+      } catch (error) {
+        console.error(`Error updating color for player ${player.userId}:`, error);
+        // Optionally, send an error back to the client
+        // socket.emit('player:updateColorError', { message: 'Failed to update color on server.' });
+      }
+    } else {
+      console.warn(`Could not update color for socket ${socket.id}. Player or data missing/invalid.`);
+    }
+  });
+
   // Handle 3D object updates (cube rotation)
-  socket.on('update rotation', (rotation) => {
+  socket.on(EVENTS.UPDATE_ROTATION, (data) => {
     // Broadcast the rotation update to all other clients
-    socket.broadcast.emit('update rotation', rotation);
+    socket.broadcast.emit('update rotation', data);
   });
 
   // Handle disconnection

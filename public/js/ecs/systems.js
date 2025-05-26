@@ -53,6 +53,43 @@ export class RenderSystem extends System {
         meshComponent.mesh.position.copy(transformComponent.position);
         meshComponent.mesh.rotation.copy(transformComponent.rotation);
         meshComponent.mesh.scale.copy(transformComponent.scale);
+
+        // --- BEGIN ADDED COLOR UPDATE LOGIC ---
+        if (entity.hasComponent('PlayerComponent')) {
+            const playerComponent = entity.getComponent('PlayerComponent');
+            // New log: Check state for any entity with PlayerComponent
+            console.log(`[RenderSystem Check] Entity ID: ${entity.id}, isLocal: ${playerComponent.isLocalPlayer}, needsUpdate: ${playerComponent.colorNeedsUpdate}, desiredColor: ${playerComponent.desiredColor}, meshExists: ${!!(meshComponent.mesh)}`);
+
+            if (playerComponent.isLocalPlayer && playerComponent.colorNeedsUpdate && meshComponent.mesh) {
+                try {
+                    // Check if mesh is a Group (which is the case for player entities)
+                    if (meshComponent.mesh.type === 'Group' && meshComponent.mesh.children.length > 0) {
+                        // The actual mesh with material is the first child of the group
+                        const actualMesh = meshComponent.mesh.children[0];
+                        if (actualMesh && actualMesh.material) {
+                            actualMesh.material.color.set(playerComponent.desiredColor);
+                            playerComponent.color = playerComponent.desiredColor; // Keep actual color field in sync
+                            playerComponent.colorNeedsUpdate = false;
+                            console.log(`[RenderSystem] Updated local player ${playerComponent.playerId || entity.id} mesh color to ${playerComponent.desiredColor}`);
+                        } else {
+                            console.error(`[RenderSystem] Player mesh child or its material not found for ${playerComponent.playerId || entity.id}`);
+                        }
+                    } 
+                    // Also handle the case where mesh might be a direct Mesh (not in a Group)
+                    else if (meshComponent.mesh.material) {
+                        meshComponent.mesh.material.color.set(playerComponent.desiredColor);
+                        playerComponent.color = playerComponent.desiredColor;
+                        playerComponent.colorNeedsUpdate = false;
+                        console.log(`[RenderSystem] Updated local player ${playerComponent.playerId || entity.id} mesh color directly to ${playerComponent.desiredColor}`);
+                    } else {
+                        console.error(`[RenderSystem] Mesh material not found for player ${playerComponent.playerId || entity.id}`);
+                    }
+                } catch (e) {
+                    console.error(`[RenderSystem] Error setting color for local player ${playerComponent.playerId || entity.id}: ${e}. Desired color: ${playerComponent.desiredColor}`);
+                }
+            }
+        }
+        // --- END ADDED COLOR UPDATE LOGIC ---
     }
 
     /**
