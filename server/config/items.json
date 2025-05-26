@@ -1,0 +1,38 @@
+[
+  {
+    "id": "0",
+    "name": "Default Item",
+    "description": "The default item that every player starts with.",
+    "gltfPath": "models/items/default_cube.gltf",
+    "inventoryIconPath": "img/items/icons/default_cube_icon.png",
+    "tradeable": true,
+    "stackable": false,
+    "maxStack": 1,
+    "type": "generic"
+  },
+  {
+    "id": "1",
+    "name": "Basic Item",
+    "description": "A basic item that can be picked up.",
+    "gltfPath": "models/items/basic_item.gltf",
+    "inventoryIconPath": "img/items/icons/basic_item_icon.png",
+    "tradeable": true,
+    "stackable": true,
+    "maxStack": 64,
+    "type": "resource"
+  },
+  {
+    "id": "health_potion_small",
+    "name": "Small Health Potion",
+    "description": "Restores a small amount of health.",
+    "gltfPath": "models/items/potions/health_potion_small.gltf",
+    "inventoryIconPath": "img/items/icons/health_potion_small_icon.png",
+    "tradeable": true,
+    "stackable": true,
+    "maxStack": 10,
+    "type": "consumable",
+    "effects": {
+      "heal": 25
+    }
+  }
+]

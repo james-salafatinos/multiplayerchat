@@ -2,6 +2,7 @@
 // Inventory management for socket.io
 
 import { statements } from '../db/index.js';
+import { getItemById } from '../utils/itemManager.js';
 
 /**
  * Initialize inventory handlers for a socket connection
@@ -42,6 +43,14 @@ export function initInventoryHandlers(socket, io, players, worldItems) {
             
           case 'move':
             handleMove(socket, io, player, data);
+            break;
+            
+          case 'stack':
+            handleStack(socket, io, player, data);
+            break;
+            
+          case 'split':
+            handleSplit(socket, io, player, data);
             break;
         }
       }
@@ -90,14 +99,47 @@ function handlePickup(socket, io, player, data, worldItems) {
     return;
   }
 
-  // Add item to player's inventory (memory)
-  player.inventory[emptySlotIndex] = {
-    uuid: itemToPickup.uuid, // Store UUID for potential future drop identification
-    id: itemToPickup.id,
-    name: itemToPickup.name,
-    description: itemToPickup.description,
-    // quantity: 1 // If items can stack
-  };
+  // Get item definition from itemManager
+  const itemDef = getItemById(itemToPickup.id);
+  
+  // Check if this item is stackable
+  const isStackable = itemDef && itemDef.stackable;
+  
+  // If stackable, check if player already has this item type in inventory
+  let existingSlotIndex = -1;
+  if (isStackable) {
+    existingSlotIndex = player.inventory.findIndex(slot => 
+      slot !== null && slot.id === itemToPickup.id && slot.quantity < (itemDef.maxStack || 64)
+    );
+  }
+  
+  if (existingSlotIndex !== -1) {
+    // Add to existing stack
+    player.inventory[existingSlotIndex].quantity += 1;
+    
+    // Update quantity in database
+    statements.updateInventoryItemQuantity.run(
+      player.inventory[existingSlotIndex].quantity,
+      socket.userId || socket.id,
+      existingSlotIndex
+    );
+  } else {
+    // Add item to player's inventory (memory)
+    player.inventory[emptySlotIndex] = {
+      uuid: itemToPickup.uuid, // Store UUID for potential future drop identification
+      id: itemToPickup.id,
+      name: itemToPickup.name,
+      description: itemToPickup.description,
+      quantity: 1,
+      // Include additional properties from item definition
+      inventoryIconPath: itemDef ? itemDef.inventoryIconPath : null,
+      gltfPath: itemDef ? itemDef.gltfPath : null,
+      tradeable: itemDef ? itemDef.tradeable : true,
+      stackable: itemDef ? itemDef.stackable : false,
+      maxStack: itemDef ? itemDef.maxStack : 1,
+      type: itemDef ? itemDef.type : 'generic'
+    };
+  }
   
   // Remove item from world (memory)
   worldItems.delete(data.itemUuid);
@@ -105,14 +147,17 @@ function handlePickup(socket, io, player, data, worldItems) {
   // Remove item from world_items table in DB
   statements.removeWorldItem.run(data.itemUuid);
   
-  // Save item to player_inventory table in DB
-  statements.setInventoryItem.run(
-    socket.userId || socket.id, // Use userId for authenticated users, socket.id for guests
-    emptySlotIndex,
-    itemToPickup.id,
-    itemToPickup.name,
-    itemToPickup.description
-  );
+  // Save item to player_inventory table in DB if we added a new item (not stacked)
+  if (existingSlotIndex === -1) {
+    statements.setInventoryItem.run(
+      socket.userId || socket.id, // Use userId for authenticated users, socket.id for guests
+      emptySlotIndex,
+      itemToPickup.id,
+      itemToPickup.name,
+      itemToPickup.description,
+      1 // Initial quantity is 1
+    );
+  }
   
   // Send updated inventory to client
   socket.emit('inventory update', {
@@ -178,9 +223,16 @@ function handleDrop(socket, io, player, data, worldItems) {
     io.emit('add world item', worldItem);
     
     // Notify about inventory update
-    io.emit('inventory update', {
+    socket.emit('inventory update', {
+      inventory: player.inventory,
+      message: `Dropped ${droppedItem.name}`
+    });
+    
+    // Notify other clients about the player's inventory change
+    socket.broadcast.emit('player inventory update', {
       playerId: socket.id,
-      ...data
+      slotIndex: data.slotIndex,
+      item: null
     });
   }
 }
@@ -199,6 +251,10 @@ function handleMove(socket, io, player, data) {
   
   // Skip if source slot is empty
   if (!sourceItem) return;
+  
+  // Get item definition for source item
+  const sourceItemDef = getItemById(sourceItem.id);
+  const isStackable = sourceItemDef && sourceItemDef.stackable;
   
   // Swap items in memory
   player.inventory[data.targetSlotIndex] = sourceItem;
@@ -220,7 +276,8 @@ function handleMove(socket, io, player, data) {
       data.targetSlotIndex,
       sourceItem.id,
       sourceItem.name,
-      sourceItem.description || ''
+      sourceItem.description || '',
+      sourceItem.quantity || 1
     );
   }
   
@@ -230,13 +287,23 @@ function handleMove(socket, io, player, data) {
       data.sourceSlotIndex,
       targetItem.id,
       targetItem.name,
-      targetItem.description || ''
+      targetItem.description || '',
+      targetItem.quantity || 1
     );
   }
   
   // Notify about inventory update
-  io.emit('inventory update', {
+  socket.emit('inventory update', {
+    inventory: player.inventory,
+    message: targetItem ? 'Swapped items' : 'Moved item'
+  });
+  
+  // Notify other clients about the player's inventory change
+  socket.broadcast.emit('player inventory update', {
     playerId: socket.id,
-    ...data
+    sourceSlotIndex: data.sourceSlotIndex,
+    targetSlotIndex: data.targetSlotIndex,
+    sourceItem: player.inventory[data.sourceSlotIndex],
+    targetItem: player.inventory[data.targetSlotIndex]
   });
 }

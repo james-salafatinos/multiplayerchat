@@ -2,6 +2,7 @@
 // World items initialization and management
 
 import { statements } from '../db/index.js';
+import { getItemById } from './itemManager.js';
 
 /**
  * Initialize world items from database or create default items if none exist
@@ -32,11 +33,37 @@ export function initializeWorldItems() {
     // If no items in database, create initial items
     if (worldItems.size === 0) {
       console.log('Creating initial world items as database was empty.');
+      
+      // Use item definitions from itemManager
+      const basicItemDef = getItemById('basic_item_01');
+      
+      if (!basicItemDef) {
+        console.error('Failed to get basic item definition from itemManager');
+        return worldItems;
+      }
+      
       const initialItems = [
-        { uuid: 'item-1', id: 1, name: 'Basic Item', description: 'A basic item that can be picked up', position: { x: 2, y: 0.15, z: 2 } },
-        { uuid: 'item-2', id: 1, name: 'Basic Item', description: 'A basic item that can be picked up', position: { x: -2, y: 0.15, z: 2 } },
-        { uuid: 'item-3', id: 1, name: 'Basic Item', description: 'A basic item that can be picked up', position: { x: 2, y: 0.15, z: -2 } },
-        // { uuid: 'item-4', id: 1, name: 'Basic Item', description: 'A basic item that can be picked up', position: { x: -2, y: 0.15, z: -2 } } // Let's start with 3 for now
+        { 
+          uuid: 'item-1', 
+          id: basicItemDef.id, 
+          name: basicItemDef.name, 
+          description: basicItemDef.description,
+          position: { x: 2, y: 0.15, z: 2 } 
+        },
+        { 
+          uuid: 'item-2', 
+          id: basicItemDef.id, 
+          name: basicItemDef.name, 
+          description: basicItemDef.description,
+          position: { x: -2, y: 0.15, z: 2 } 
+        },
+        { 
+          uuid: 'item-3', 
+          id: basicItemDef.id, 
+          name: basicItemDef.name, 
+          description: basicItemDef.description,
+          position: { x: 2, y: 0.15, z: -2 } 
+        }
       ];
       
       initialItems.forEach(item => {
@@ -74,6 +101,17 @@ export function initializeWorldItems() {
  */
 export function addWorldItem(worldItems, item) {
   try {
+    // If only item ID is provided, get full item details from item manager
+    if (item.id && (!item.name || !item.description)) {
+      const itemDef = getItemById(item.id);
+      if (itemDef) {
+        item.name = itemDef.name;
+        item.description = itemDef.description;
+      } else {
+        console.warn(`Item definition not found for ID: ${item.id}`);
+      }
+    }
+    
     // Add to memory
     worldItems.set(item.uuid, item);
     

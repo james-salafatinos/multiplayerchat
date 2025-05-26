@@ -26,16 +26,17 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     player_id TEXT NOT NULL,
     slot_index INTEGER NOT NULL,
-    item_id INTEGER NOT NULL,
+    item_id TEXT NOT NULL,
     item_name TEXT NOT NULL,
     item_description TEXT,
+    quantity INTEGER DEFAULT 1,
     UNIQUE(player_id, slot_index)
   );
   
   CREATE TABLE IF NOT EXISTS world_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     item_uuid TEXT NOT NULL UNIQUE,
-    item_id INTEGER NOT NULL,
+    item_id TEXT NOT NULL,
     item_name TEXT NOT NULL,
     item_description TEXT,
     position_x REAL NOT NULL,
@@ -60,6 +61,86 @@ db.exec(`
   );
 `);
 
+// Check if quantity column exists in player_inventory table, if not add it
+const tableInfo = db.prepare("PRAGMA table_info(player_inventory)").all();
+const hasQuantityColumn = tableInfo.some(column => column.name === 'quantity');
+
+if (!hasQuantityColumn) {
+  console.log('Adding quantity column to player_inventory table...');
+  db.exec('ALTER TABLE player_inventory ADD COLUMN quantity INTEGER NOT NULL DEFAULT 1');
+  console.log('Successfully added quantity column to player_inventory table');
+}
+
+// Check if item_id in player_inventory and world_items is TEXT type, if not update it
+const playerInventoryColumns = tableInfo.find(column => column.name === 'item_id');
+if (playerInventoryColumns && playerInventoryColumns.type === 'INTEGER') {
+  console.log('Converting item_id column in player_inventory from INTEGER to TEXT...');
+  // SQLite doesn't support ALTER COLUMN, so we need to create a new table and copy data
+  db.exec(`
+    BEGIN TRANSACTION;
+    
+    -- Create a temporary table with the new schema
+    CREATE TABLE player_inventory_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      player_id TEXT NOT NULL,
+      slot_index INTEGER NOT NULL,
+      item_id TEXT NOT NULL,
+      item_name TEXT NOT NULL,
+      item_description TEXT,
+      quantity INTEGER NOT NULL DEFAULT 1,
+      UNIQUE(player_id, slot_index)
+    );
+    
+    -- Copy data from the old table to the new one, converting item_id to TEXT
+    INSERT INTO player_inventory_new (id, player_id, slot_index, item_id, item_name, item_description, quantity)
+    SELECT id, player_id, slot_index, CAST(item_id AS TEXT), item_name, item_description, 1 FROM player_inventory;
+    
+    -- Drop the old table
+    DROP TABLE player_inventory;
+    
+    -- Rename the new table to the original name
+    ALTER TABLE player_inventory_new RENAME TO player_inventory;
+    
+    COMMIT;
+  `);
+  console.log('Successfully converted item_id in player_inventory to TEXT');
+}
+
+// Do the same for world_items table
+const worldItemsInfo = db.prepare("PRAGMA table_info(world_items)").all();
+const worldItemsColumns = worldItemsInfo.find(column => column.name === 'item_id');
+if (worldItemsColumns && worldItemsColumns.type === 'INTEGER') {
+  console.log('Converting item_id column in world_items from INTEGER to TEXT...');
+  db.exec(`
+    BEGIN TRANSACTION;
+    
+    -- Create a temporary table with the new schema
+    CREATE TABLE world_items_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      item_uuid TEXT NOT NULL UNIQUE,
+      item_id TEXT NOT NULL,
+      item_name TEXT NOT NULL,
+      item_description TEXT,
+      position_x REAL NOT NULL,
+      position_y REAL NOT NULL,
+      position_z REAL NOT NULL
+    );
+    
+    -- Copy data from the old table to the new one, converting item_id to TEXT
+    INSERT INTO world_items_new (id, item_uuid, item_id, item_name, item_description, position_x, position_y, position_z)
+    SELECT id, item_uuid, CAST(item_id AS TEXT), item_name, item_description, position_x, position_y, position_z FROM world_items;
+    
+    -- Drop the old table
+    DROP TABLE world_items;
+    
+    -- Rename the new table to the original name
+    ALTER TABLE world_items_new RENAME TO world_items;
+    
+    COMMIT;
+  `);
+  console.log('Successfully converted item_id in world_items to TEXT');
+}
+
 // Prepare statements
 const statements = {
   // Message statements
@@ -68,7 +149,8 @@ const statements = {
   
   // Inventory statements
   getPlayerInventory: db.prepare('SELECT * FROM player_inventory WHERE player_id = ? ORDER BY slot_index'),
-  setInventoryItem: db.prepare('INSERT OR REPLACE INTO player_inventory (player_id, slot_index, item_id, item_name, item_description) VALUES (?, ?, ?, ?, ?)'),
+  setInventoryItem: db.prepare('INSERT OR REPLACE INTO player_inventory (player_id, slot_index, item_id, item_name, item_description, quantity) VALUES (?, ?, ?, ?, ?, ?)'),
+  updateInventoryItemQuantity: db.prepare('UPDATE player_inventory SET quantity = ? WHERE player_id = ? AND slot_index = ?'),
   removeInventoryItem: db.prepare('DELETE FROM player_inventory WHERE player_id = ? AND slot_index = ?'),
   clearPlayerInventory: db.prepare('DELETE FROM player_inventory WHERE player_id = ?'),
   

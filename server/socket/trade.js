@@ -3,6 +3,7 @@
 
 import { statements } from '../db/index.js';
 import { activeSessions } from '../routes/auth.js';
+import { getItemById } from '../utils/itemManager.js';
 
 // Map of active trades by trade ID
 const activeTrades = new Map();
@@ -344,8 +345,21 @@ function completeTrade(trade, io, players) {
         return;
       }
       
+      // Get item definition from itemManager for additional properties
+      const itemDef = getItemById(sourceItem.id);
+      
       // Add item to toPlayer's inventory
-      toPlayer.inventory[emptySlotIndex] = sourceItem;
+      toPlayer.inventory[emptySlotIndex] = {
+        ...sourceItem,
+        // Ensure all required properties are present
+        quantity: sourceItem.quantity || 1,
+        inventoryIconPath: sourceItem.inventoryIconPath || (itemDef ? itemDef.inventoryIconPath : null),
+        gltfPath: sourceItem.gltfPath || (itemDef ? itemDef.gltfPath : null),
+        tradeable: sourceItem.tradeable !== undefined ? sourceItem.tradeable : (itemDef ? itemDef.tradeable : true),
+        stackable: sourceItem.stackable !== undefined ? sourceItem.stackable : (itemDef ? itemDef.stackable : false),
+        maxStack: sourceItem.maxStack || (itemDef ? itemDef.maxStack : 1),
+        type: sourceItem.type || (itemDef ? itemDef.type : 'generic')
+      };
       
       // Update database - use user IDs instead of socket IDs for persistence
       statements.removeInventoryItem.run(
@@ -358,7 +372,8 @@ function completeTrade(trade, io, players) {
         emptySlotIndex,
         sourceItem.id,
         sourceItem.name,
-        sourceItem.description || ''
+        sourceItem.description || '',
+        sourceItem.quantity || 1
       );
       
       console.log(`Moved item from user ${fromUserId || trade.fromPlayerId} to user ${toUserId || trade.toPlayerId}`);
@@ -378,8 +393,21 @@ function completeTrade(trade, io, players) {
         return;
       }
       
+      // Get item definition from itemManager for additional properties
+      const itemDef = getItemById(sourceItem.id);
+      
       // Add item to fromPlayer's inventory
-      fromPlayer.inventory[emptySlotIndex] = sourceItem;
+      fromPlayer.inventory[emptySlotIndex] = {
+        ...sourceItem,
+        // Ensure all required properties are present
+        quantity: sourceItem.quantity || 1,
+        inventoryIconPath: sourceItem.inventoryIconPath || (itemDef ? itemDef.inventoryIconPath : null),
+        gltfPath: sourceItem.gltfPath || (itemDef ? itemDef.gltfPath : null),
+        tradeable: sourceItem.tradeable !== undefined ? sourceItem.tradeable : (itemDef ? itemDef.tradeable : true),
+        stackable: sourceItem.stackable !== undefined ? sourceItem.stackable : (itemDef ? itemDef.stackable : false),
+        maxStack: sourceItem.maxStack || (itemDef ? itemDef.maxStack : 1),
+        type: sourceItem.type || (itemDef ? itemDef.type : 'generic')
+      };
       
       // Update database - use user IDs instead of socket IDs for persistence
       statements.removeInventoryItem.run(
@@ -392,7 +420,8 @@ function completeTrade(trade, io, players) {
         emptySlotIndex,
         sourceItem.id,
         sourceItem.name,
-        sourceItem.description || ''
+        sourceItem.description || '',
+        sourceItem.quantity || 1
       );
       
       console.log(`Moved item from user ${toUserId || trade.toPlayerId} to user ${fromUserId || trade.fromPlayerId}`);

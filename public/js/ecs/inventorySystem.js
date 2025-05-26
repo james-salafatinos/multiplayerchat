@@ -716,7 +716,6 @@ export class InventorySystem extends System {
                 itemDisplay.className = 'inventory-item';
                 itemDisplay.style.width = '90%';
                 itemDisplay.style.height = '90%';
-                itemDisplay.style.backgroundColor = this.getItemColor(item.id);
                 itemDisplay.style.borderRadius = '3px';
                 itemDisplay.style.display = 'flex';
                 itemDisplay.style.justifyContent = 'center';
@@ -724,10 +723,50 @@ export class InventorySystem extends System {
                 itemDisplay.style.color = 'white';
                 itemDisplay.style.fontSize = '8px';
                 itemDisplay.style.overflow = 'hidden';
-                itemDisplay.textContent = item.name.substring(0, 3);
+                
+                // Check if the item has a custom icon path
+                if (item.inventoryIconPath) {
+                    // Use the custom icon as background image
+                    // Make sure we're using the correct path format
+                    let iconPath = item.inventoryIconPath;
+                    
+                    // Remove any leading slash as it might cause issues
+                    if (iconPath.startsWith('/')) {
+                        iconPath = iconPath.substring(1);
+                    }
+                    
+                    console.log(`Loading inventory icon from: ${iconPath}`);
+                    itemDisplay.style.backgroundImage = `url('${iconPath}')`;
+                    itemDisplay.style.backgroundSize = 'contain';
+                    itemDisplay.style.backgroundPosition = 'center';
+                    itemDisplay.style.backgroundRepeat = 'no-repeat';
+                    // Don't show text when using an icon
+                    itemDisplay.textContent = '';
+                } else {
+                    // Fallback to colored box with text
+                    itemDisplay.style.backgroundColor = this.getItemColor(item.id);
+                    itemDisplay.textContent = item.name.substring(0, 3);
+                }
+                
+                // Add quantity display if item is stackable and quantity > 1
+                if (item.quantity && item.quantity > 1) {
+                    const quantityDisplay = document.createElement('div');
+                    quantityDisplay.className = 'item-quantity';
+                    quantityDisplay.style.position = 'absolute';
+                    quantityDisplay.style.bottom = '2px';
+                    quantityDisplay.style.right = '2px';
+                    quantityDisplay.style.fontSize = '8px';
+                    quantityDisplay.style.color = 'white';
+                    quantityDisplay.style.textShadow = '1px 1px 1px black';
+                    quantityDisplay.textContent = item.quantity;
+                    itemDisplay.appendChild(quantityDisplay);
+                    
+                    // Make sure the parent has relative positioning for absolute child
+                    itemDisplay.style.position = 'relative';
+                }
                 
                 // Set tooltip
-                slot.title = `${item.name}\n${item.description}`;
+                slot.title = `${item.name}\n${item.description}${item.quantity > 1 ? `\nQuantity: ${item.quantity}` : ''}`;
                 
                 // Make item draggable
                 itemDisplay.draggable = true;

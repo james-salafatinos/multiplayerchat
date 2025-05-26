@@ -6,6 +6,7 @@ import { initInventoryHandlers } from './inventory.js';
 import { initPlayerHandlers } from './player.js';
 import { initTradeHandlers, activeTrades } from './trade.js';
 import { statements } from '../db/index.js';
+import { getItemById } from '../utils/itemManager.js';
 import { isUserLoggedIn, updateSessionActivity, activeSessions } from '../routes/auth.js';
 
 // Track active socket connections per user ID
@@ -122,10 +123,21 @@ export function initSocketHandlers(io, players, worldItems) {
             
             // Populate inventory slots with items from database
             inventoryItems.forEach(item => {
+              // Get item definition from itemManager for additional properties
+              const itemDef = getItemById(item.item_id);
+              
               newPlayer.inventory[item.slot_index] = {
                 id: item.item_id,
                 name: item.item_name,
-                description: item.item_description
+                description: item.item_description,
+                quantity: item.quantity || 1,
+                // Include additional properties from item definition
+                inventoryIconPath: itemDef ? itemDef.inventoryIconPath : null,
+                gltfPath: itemDef ? itemDef.gltfPath : null,
+                tradeable: itemDef ? itemDef.tradeable : true,
+                stackable: itemDef ? itemDef.stackable : false,
+                maxStack: itemDef ? itemDef.maxStack : 1,
+                type: itemDef ? itemDef.type : 'generic'
               };
             });
           } catch (error) {
@@ -202,10 +214,21 @@ export function initSocketHandlers(io, players, worldItems) {
           // Convert DB items to inventory array format
           inventoryItems.forEach(item => {
             if (item.slot_index < newPlayer.inventory.length) {
+              // Get item definition from itemManager for additional properties
+              const itemDef = getItemById(item.item_id);
+              
               newPlayer.inventory[item.slot_index] = {
                 id: item.item_id,
                 name: item.item_name,
-                description: item.item_description
+                description: item.item_description,
+                quantity: item.quantity || 1,
+                // Include additional properties from item definition
+                inventoryIconPath: itemDef ? itemDef.inventoryIconPath : null,
+                gltfPath: itemDef ? itemDef.gltfPath : null,
+                tradeable: itemDef ? itemDef.tradeable : true,
+                stackable: itemDef ? itemDef.stackable : false,
+                maxStack: itemDef ? itemDef.maxStack : 1,
+                type: itemDef ? itemDef.type : 'generic'
               };
             }
           });
@@ -221,11 +244,38 @@ export function initSocketHandlers(io, players, worldItems) {
     
     if (isFirstTimePlayer) {
       console.log(`Adding default item to first-time player: ${newPlayer.username}`);
-      newPlayer.inventory[0] = {
-        id: 0,
-        name: 'Default Item',
-        description: 'The default item that every player starts with'
-      };
+      
+      // Get the default starter item from itemManager
+      const defaultItem = getItemById('0'); // Updated to match the ID in items.json
+      
+      if (defaultItem) {
+        newPlayer.inventory[0] = {
+          id: defaultItem.id,
+          name: defaultItem.name,
+          description: defaultItem.description,
+          quantity: 1,
+          inventoryIconPath: defaultItem.inventoryIconPath,
+          gltfPath: defaultItem.gltfPath,
+          tradeable: defaultItem.tradeable,
+          stackable: defaultItem.stackable,
+          maxStack: defaultItem.maxStack,
+          type: defaultItem.type
+        };
+        
+        // Save to database if authenticated
+        if (socket.userId) {
+          statements.setInventoryItem.run(
+            socket.userId,
+            0, // slot index
+            defaultItem.id,
+            defaultItem.name,
+            defaultItem.description,
+            1 // quantity
+          );
+        }
+      } else {
+        console.error('Default starter item not found in item definitions');
+      }
     }
     
     // Inventory is already loaded above for authenticated users
@@ -262,6 +312,27 @@ export function initSocketHandlers(io, players, worldItems) {
       position: newPlayer.position,
       color: newPlayer.color
     });
+    
+    // Make sure all items in inventory have their full definitions
+    for (let i = 0; i < newPlayer.inventory.length; i++) {
+      const item = newPlayer.inventory[i];
+      if (item && item.id) {
+        // Get the full item definition from itemManager
+        const itemDef = getItemById(item.id);
+        if (itemDef) {
+          // Update the item with all properties from the definition
+          newPlayer.inventory[i] = {
+            ...item,
+            inventoryIconPath: itemDef.inventoryIconPath,
+            gltfPath: itemDef.gltfPath,
+            tradeable: itemDef.tradeable,
+            stackable: itemDef.stackable,
+            maxStack: itemDef.maxStack,
+            type: itemDef.type
+          };
+        }
+      }
+    }
     
     // Explicitly send the player's inventory
     console.log(`Sending inventory to player ${socket.id}:`, newPlayer.inventory);
@@ -325,7 +396,8 @@ export function initSocketHandlers(io, players, worldItems) {
                   slotIndex,
                   item.id,
                   item.name,
-                  item.description || ''
+                  item.description || '',
+                  item.quantity || 1
                 );
               }
             });

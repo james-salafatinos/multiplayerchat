@@ -12,6 +12,10 @@ import {
     InteractableComponent
 } from './inventoryComponents.js';
 import { getSocket } from '../network.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+// Create a loader instance to be reused
+const gltfLoader = new GLTFLoader();
 
 /**
  * Create an item entity that can be picked up
@@ -30,22 +34,12 @@ export function createItem(world, options = {}) {
         color: options.color || 0xffaa00,
         size: options.size || 0.3,
         isPickupable: options.isPickupable !== undefined ? options.isPickupable : true,
+        gltfPath: options.gltfPath || null,
         ...options
     };
     
-    // Create geometry, material, and mesh for the item
-    const geometry = new THREE.BoxGeometry(config.size, config.size, config.size);
-    const material = new THREE.MeshStandardMaterial({ 
-        color: config.color,
-        roughness: 0.5,
-        metalness: 0.5,
-        emissive: new THREE.Color(config.color).multiplyScalar(0.2) // Slight glow effect
-    });
-    const mesh = new THREE.Mesh(geometry, material);
-    
-    // Add a slight hover animation
+    // Create a group to hold the item mesh
     const itemGroup = new THREE.Group();
-    itemGroup.add(mesh);
     
     // Create entity and add components
     const entity = new Entity();
@@ -57,25 +51,77 @@ export function createItem(world, options = {}) {
         scale: new THREE.Vector3(1, 1, 1)
     }));
     
-    // Mesh component
+    // Mesh component (initially empty)
     const meshComponent = new MeshComponent({
         mesh: itemGroup
     });
     entity.addComponent(meshComponent);
-
-    // Store entity ID in mesh's userData for easy lookup during raycasting
-    // The raycaster intersects with 'mesh', so 'mesh' needs the entityId.
-    mesh.userData.entityId = entity.id; 
-    // itemGroup.userData.entityId = entity.id; // Optionally keep this, but mesh.userData is primary for raycasting
-
+    
     // Item component
     entity.addComponent(new ItemComponent({
         uuid: config.uuid,
         id: config.id,
         name: config.name,
         description: config.description,
-        isPickupable: config.isPickupable
+        isPickupable: config.isPickupable,
+        gltfPath: config.gltfPath
     }));
+    
+    // Try to load GLTF model if path is provided
+    if (config.gltfPath) {
+        // Make sure we're using the correct path format
+        let modelPath = config.gltfPath;
+        
+        // Remove any leading slash as it might cause issues
+        if (modelPath.startsWith('/')) {
+            modelPath = modelPath.substring(1);
+        }
+        
+        console.log(`Attempting to load 3D model from: ${modelPath}`);
+        gltfLoader.load(
+            modelPath,
+            (gltf) => {
+                // Success callback
+                console.log(`Loaded model for item ${config.name} from ${config.gltfPath}`);
+                
+                // Clear any existing meshes
+                while (itemGroup.children.length > 0) {
+                    itemGroup.remove(itemGroup.children[0]);
+                }
+                
+                // Add the loaded model to the group
+                itemGroup.add(gltf.scene);
+                
+                // Scale the model to appropriate size
+                const box = new THREE.Box3().setFromObject(gltf.scene);
+                const size = box.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const scale = config.size / maxDim;
+                gltf.scene.scale.set(scale, scale, scale);
+                
+                // Ensure all meshes in the model have the entity ID for raycasting
+                gltf.scene.traverse((child) => {
+                    if (child.isMesh) {
+                        child.userData.entityId = entity.id;
+                    }
+                });
+            },
+            (xhr) => {
+                // Progress callback
+                console.log(`${(xhr.loaded / xhr.total * 100)}% loaded for ${config.name}`);
+            },
+            (error) => {
+                // Error callback
+                console.error(`Error loading model for ${config.name}:`, error);
+                
+                // Fallback to a simple box if model loading fails
+                createFallbackMesh(itemGroup, config, entity.id);
+            }
+        );
+    } else {
+        // No GLTF path, use a simple box
+        createFallbackMesh(itemGroup, config, entity.id);
+    }
     
     // Interactable component
     entity.addComponent(new InteractableComponent({
@@ -107,6 +153,30 @@ export function createItem(world, options = {}) {
     world.addEntity(entity);
     
     return entity;
+}
+
+/**
+ * Create a fallback mesh for items when GLTF loading fails or is not available
+ * @param {THREE.Group} group - The group to add the mesh to
+ * @param {Object} config - The item configuration
+ * @param {string} entityId - The entity ID to store in userData
+ */
+function createFallbackMesh(group, config, entityId) {
+    // Create geometry, material, and mesh for the item
+    const geometry = new THREE.BoxGeometry(config.size, config.size, config.size);
+    const material = new THREE.MeshStandardMaterial({ 
+        color: config.color,
+        roughness: 0.5,
+        metalness: 0.5,
+        emissive: new THREE.Color(config.color).multiplyScalar(0.2) // Slight glow effect
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    
+    // Store entity ID in mesh's userData for raycasting
+    mesh.userData.entityId = entityId;
+    
+    // Add mesh to group
+    group.add(mesh);
 }
 
 /**
