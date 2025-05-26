@@ -414,12 +414,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error("World item data missing uuid:", itemData);
                 return;
             }
+            // Pass all available item properties to createBasicItem
             const itemEntity = createBasicItem(world, {
                 uuid: itemData.uuid,
                 id: itemData.id,
                 name: itemData.name,
                 description: itemData.description,
-                position: itemData.position
+                position: itemData.position,
+                // Include gltfPath and other properties from the server data
+                gltfPath: itemData.gltfPath,
+                inventoryIconPath: itemData.inventoryIconPath,
+                tradeable: itemData.tradeable,
+                stackable: itemData.stackable,
+                maxStack: itemData.maxStack,
+                type: itemData.type
             });
             worldItemEntities.set(itemData.uuid, itemEntity);
         });

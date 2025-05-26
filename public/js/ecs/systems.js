@@ -58,7 +58,7 @@ export class RenderSystem extends System {
         if (entity.hasComponent('PlayerComponent')) {
             const playerComponent = entity.getComponent('PlayerComponent');
             // New log: Check state for any entity with PlayerComponent
-            console.log(`[RenderSystem Check] Entity ID: ${entity.id}, isLocal: ${playerComponent.isLocalPlayer}, needsUpdate: ${playerComponent.colorNeedsUpdate}, desiredColor: ${playerComponent.desiredColor}, meshExists: ${!!(meshComponent.mesh)}`);
+            // console.log(`[RenderSystem Check] Entity ID: ${entity.id}, isLocal: ${playerComponent.isLocalPlayer}, needsUpdate: ${playerComponent.colorNeedsUpdate}, desiredColor: ${playerComponent.desiredColor}, meshExists: ${!!(meshComponent.mesh)}`);
 
             if (playerComponent.isLocalPlayer && playerComponent.colorNeedsUpdate && meshComponent.mesh) {
                 try {

@@ -89,7 +89,41 @@ export class InventorySystem extends System {
                 if (localPlayerEntity && localPlayerEntity.hasComponent('InventoryComponent')) {
                     // Update inventory component with new data
                     const inventoryComponent = localPlayerEntity.getComponent('InventoryComponent');
-                    inventoryComponent.slots = data.inventory;
+                    
+                    // Handle different formats of inventory update
+                    if (data.inventory) {
+                        // Full inventory update
+                        console.log('[InventorySystem] Updating full inventory:', data.inventory);
+                        inventoryComponent.slots = data.inventory;
+                    } else if (data.action) {
+                        // Action-based update (handled by handleInventoryUpdate)
+                        console.log('[InventorySystem] Handling action-based update:', data.action);
+                        this.handleInventoryUpdate({
+                            playerId: localPlayerEntity.getComponent('PlayerComponent').playerId,
+                            action: data.action,
+                            slotIndex: data.slotIndex,
+                            itemId: data.item ? data.item.id : null,
+                            itemName: data.item ? data.item.name : null,
+                            itemDescription: data.item ? data.item.description : null,
+                            // Include all additional properties from the item definition
+                            inventoryIconPath: data.item ? data.item.inventoryIconPath : null,
+                            gltfPath: data.item ? data.item.gltfPath : null,
+                            tradeable: data.item ? data.item.tradeable : true,
+                            stackable: data.item ? data.item.stackable : false,
+                            maxStack: data.item ? data.item.maxStack : 1,
+                            type: data.item ? data.item.type : 'generic'
+                        });
+                    } else if (data.item) {
+                        // Direct item pickup update
+                        console.log('[InventorySystem] Processing direct item pickup:', data.item);
+                        // Find first empty slot
+                        const emptySlotIndex = inventoryComponent.slots.findIndex(slot => !slot);
+                        if (emptySlotIndex !== -1) {
+                            inventoryComponent.slots[emptySlotIndex] = data.item;
+                        } else {
+                            console.warn('[InventorySystem] No empty slot found for item:', data.item.name);
+                        }
+                    }
                     
                     // Update UI
                     this.updateInventoryUI(inventoryComponent);
@@ -102,7 +136,7 @@ export class InventorySystem extends System {
                     // Dispatch event for other systems
                     document.dispatchEvent(new CustomEvent('local-inventory-changed', {
                         detail: {
-                            inventory: data.inventory,
+                            inventory: inventoryComponent.slots,
                             item: data.item,
                             message: data.message
                         }
@@ -543,11 +577,19 @@ export class InventorySystem extends System {
         // Handle different actions
         switch (data.action) {
             case 'pickup':
-                // Add item to inventory
+                // Add item to inventory with all properties
                 inventoryComponent.slots[data.slotIndex] = {
                     id: data.itemId,
                     name: data.itemName,
-                    description: data.itemDescription || ''
+                    description: data.itemDescription || '',
+                    // Include additional properties from the item definition
+                    inventoryIconPath: data.inventoryIconPath,
+                    gltfPath: data.gltfPath,
+                    tradeable: data.tradeable,
+                    stackable: data.stackable,
+                    maxStack: data.maxStack,
+                    type: data.type,
+                    quantity: data.quantity || 1
                 };
                 
                 if (isLocalPlayer) {

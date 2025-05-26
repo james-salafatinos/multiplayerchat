@@ -19,7 +19,12 @@ export function initializeWorldItems() {
       // Get full item definition from itemManager
       const itemDef = getItemById(item.item_id);
       
-      worldItems.set(item.item_uuid, {
+      if (!itemDef) {
+        console.warn(`Item definition not found for ID: ${item.item_id}`);
+      }
+      
+      // Create a base item with database values
+      const worldItem = {
         uuid: item.item_uuid,
         id: item.item_id,
         name: item.item_name,
@@ -28,11 +33,25 @@ export function initializeWorldItems() {
           x: item.position_x,
           y: item.position_y,
           z: item.position_z
-        },
-        // Include gltfPath and other properties from item definition
-        gltfPath: itemDef ? itemDef.gltfPath : null,
-        inventoryIconPath: itemDef ? itemDef.inventoryIconPath : null
-      });
+        }
+      };
+      
+      // Add all properties from the item definition
+      if (itemDef) {
+        // Include all properties from the item definition
+        worldItem.gltfPath = itemDef.gltfPath;
+        worldItem.inventoryIconPath = itemDef.inventoryIconPath;
+        worldItem.tradeable = itemDef.tradeable;
+        worldItem.stackable = itemDef.stackable;
+        worldItem.maxStack = itemDef.maxStack;
+        worldItem.type = itemDef.type;
+        worldItem.effects = itemDef.effects;
+        
+        // Log the full item data for debugging
+        console.log(`Loaded world item ${worldItem.name} with gltfPath: ${worldItem.gltfPath}`);
+      }
+      
+      worldItems.set(item.item_uuid, worldItem);
     });
     console.log(`Loaded ${worldItems.size} items from database`);
     
