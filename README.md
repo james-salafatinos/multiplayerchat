@@ -13,6 +13,7 @@ A real-time multiplayer 3D application with Three.js, Socket.io, and a persisten
 - Third-person camera system with controlled rotation limits
 - Context menu system for player and world interactions
 - Player-to-player trading system with item exchange
+- Player color customization allowing users to select their avatar's color.
 - RESTful API endpoints for database access and monitoring (including detailed admin views for inventories, world items, and connected players)
 
 ## Detailed Architecture Breakdown
@@ -21,8 +22,8 @@ A real-time multiplayer 3D application with Three.js, Socket.io, and a persisten
 
 #### Core Files
 
-- **`public/index.html`**: Main HTML entry point that sets up the UI layout and loads all scripts
-- **`public/js/app.js`**: Core application entry point that initializes the ECS world, sets up systems, and manages the game loop
+- **`public/index.html`**: Main HTML entry point that sets up the UI layout, loads all scripts, and sets up UI elements like the player color picker.
+- **`public/js/app.js`**: Core application entry point that initializes the ECS world, sets up systems, manages the game loop, and manages local player state including color selection and synchronization.
 - **`public/js/network.js`**: Centralizes all Socket.io communications; establishes connection, defines event handlers, and provides a socket instance to other modules
 - **`public/js/chat.js`**: Manages the chat interface, sends/receives messages via socket.io, and displays history
 - **`public/js/three-setup.js`**: Initializes Three.js renderer, camera, and scene; provides core rendering functions
@@ -52,7 +53,7 @@ A real-time multiplayer 3D application with Three.js, Socket.io, and a persisten
 
 - **`public/js/ecs/entities.js`**: Factory functions for creating base entities like:
   - `createCube`: Basic cube entities
-  - `createPlayer`: Player entities with controls
+  - `createPlayer`: Player entities with controls, now supports customizable player colors.
 
 - **`public/js/ecs/inventoryEntities.js`**: Factory functions for inventory-related entities:
   - `createItem`: World items that can be picked up
@@ -104,16 +105,22 @@ A real-time multiplayer 3D application with Three.js, Socket.io, and a persisten
 
 ### Server-Side Architecture
 
-- **`server/server.js`**: Main server file that:
-  - Sets up Express and Socket.io
-  - Initializes SQLite database
-  - Manages player connections and disconnections
-  - Processes chat messages and stores them in the database
-  - Handles inventory actions (pickup, drop, move)
-  - Manages player-to-player trade requests, state transitions, and item exchanges.
-  - Maintains world state (items, players)
-  - Synchronizes data between clients
-  - Provides RESTful API endpoints for database access and monitoring, including new endpoints for detailed views of player inventories, world items, and connected player states (documented in `API.md`).
+- **`server/server.js`**: Main server entry point that initializes Express, Socket.io, and the SQLite database. It now orchestrates various modules for handling specific functionalities like database operations, routing, socket communication, and utilities.
+
+#### Modular Structure
+
+The server has been modularized for better organization and maintainability:
+- **`server/db/index.js`**: Manages SQLite database connection, schema initialization, and provides prepared statements for all database interactions, including player data and color updates.
+- **`server/config/index.js`**: Contains server configuration settings.
+- **`server/routes/index.js`**: Aggregates all API route modules.
+  - **`server/routes/auth.js`**: Handles authentication-related API endpoints.
+  - **`server/routes/admin.js`**: Provides administrative API endpoints for database management and monitoring.
+- **`server/socket/index.js`**: Consolidates all Socket.IO event handlers.
+  - **`server/socket/chat.js`**: Manages real-time chat functionality.
+  - **`server/socket/inventory.js`**: Handles player inventory updates and synchronization.
+  - **`server/socket/player.js`**: Manages player-specific events, including connection, disconnection, movement, and color updates. It handles player color update requests, persists changes to the database, and broadcasts them to other clients.
+  - **`server/socket/trade.js`**: Facilitates player-to-player trading logic.
+- **`server/utils/worldItems.js`**: Contains utility functions for initializing and managing items in the game world.
 
 ### Database Structure
 
@@ -121,6 +128,7 @@ A real-time multiplayer 3D application with Three.js, Socket.io, and a persisten
   - `messages`: Stores chat history
   - `player_inventory`: Stores player inventory items
   - `world_items`: Stores items in the world that can be picked up
+  - `users`: Stores persistent user-specific data, such as player state including avatar color.
 
 ## Data Flow Diagram
 
@@ -314,7 +322,23 @@ multiplayer-chat/
 │   ├── assets/                  # Static assets (textures, models, etc.)
 │   └── index.html               # Main HTML page
 ├── server/
-│   └── server.js              # Server-side application logic
+│   ├── server.js                # Main server file (orchestrator)
+│   ├── config/
+│   │   └── index.js             # Server configuration
+│   ├── db/
+│   │   └── index.js             # Database module (connection, statements)
+│   ├── routes/
+│   │   ├── index.js             # Main router (aggregates other routes)
+│   │   ├── admin.js             # Admin API routes
+│   │   └── auth.js              # Auth API routes
+│   ├── socket/
+│   │   ├── index.js             # Main socket handler (aggregates others)
+│   │   ├── chat.js              # Chat socket logic
+│   │   ├── inventory.js         # Inventory socket logic
+│   │   ├── player.js            # Player socket logic (movement, color)
+│   │   └── trade.js             # Trade socket logic
+│   └── utils/
+│       └── worldItems.js        # World items utilities
 ├── chat.db                    # SQLite database file
 ├── API.md                     # Detailed API documentation
 ├── README.md                  # This file
