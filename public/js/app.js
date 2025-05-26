@@ -4,6 +4,7 @@ import { initNetwork, getSocket, getLocalPlayerId } from './network.js';
 import { getCurrentUser } from './auth/auth.js';
 import { initChat } from './chat.js';
 import { handleTradeRequest, handleTradeRequestResponse } from './trade/index.js';
+import { initAdminPanel } from './admin/adminPanel.js';
 import { World } from './ecs/core.js';
 import { createCube, createGround, createPlayer } from './ecs/entities.js';
 import { createBasicItem } from './ecs/inventoryEntities.js';
@@ -88,6 +89,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initialize chat system
     initChat(socket);
+    
+    // Initialize admin panel
+    initAdminPanel();
     
     // Get the current user and dispatch authenticated event
     const currentUser = getCurrentUser();
@@ -425,7 +429,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle a single item being removed from the world
     document.addEventListener('world-item-removed', (event) => {
         const { uuid } = event.detail;
-        console.log('Received world item removed:', uuid);
+        console.log('Received world item removed (document event):', uuid);
+        removeWorldItemFromScene(uuid);
+    });
+    
+    // Socket event for world item removed
+    if (socket) {
+        socket.on('item-removed', (uuid) => {
+            console.log('Received world item removed (socket event):', uuid);
+            removeWorldItemFromScene(uuid);
+        });
+    }
+    
+    // Helper function to remove a world item from the scene
+    function removeWorldItemFromScene(uuid) {
         const itemEntity = worldItemEntities.get(uuid);
         if (itemEntity) {
             itemEntity.deactivate(); 
@@ -434,12 +451,25 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             console.warn('Attempted to remove non-existent world item entity:', uuid);
         }
-    });
+    }
 
     // Handle a single item being added to the world
     document.addEventListener('world-item-added', (event) => {
         const itemData = event.detail;
-        console.log('Received world item added:', itemData);
+        console.log('Received world item added (document event):', itemData);
+        addWorldItemToScene(itemData);
+    });
+    
+    // Socket event for world item added
+    if (socket) {
+        socket.on('world-item-added', (itemData) => {
+            console.log('Received world item added (socket event):', itemData);
+            addWorldItemToScene(itemData);
+        });
+    }
+    
+    // Helper function to add a world item to the scene
+    function addWorldItemToScene(itemData) {
         if (!itemData.uuid) {
             console.error("Added world item data missing uuid:", itemData);
             return;
@@ -453,11 +483,12 @@ document.addEventListener('DOMContentLoaded', () => {
             id: itemData.id,
             name: itemData.name,
             description: itemData.description,
-            position: itemData.position
+            position: itemData.position,
+            gltfPath: itemData.gltfPath
         });
         worldItemEntities.set(itemData.uuid, itemEntity);
         console.log('World item entity added:', itemData.uuid);
-    });
+    }
     
     // Handle trade requests
     document.addEventListener('trade-request-received', (event) => {

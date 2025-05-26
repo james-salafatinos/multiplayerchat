@@ -5,6 +5,7 @@ import { initChatHandlers } from './chat.js';
 import { initInventoryHandlers } from './inventory.js';
 import { initPlayerHandlers } from './player.js';
 import { initTradeHandlers, activeTrades } from './trade.js';
+import { initAdminHandlers } from './admin.js';
 import { statements } from '../db/index.js';
 import { getItemById } from '../utils/itemManager.js';
 import { isUserLoggedIn, updateSessionActivity, activeSessions } from '../routes/auth.js';
@@ -350,6 +351,7 @@ export function initSocketHandlers(io, players, worldItems) {
     initInventoryHandlers(socket, io, players, worldItems);
     initPlayerHandlers(socket, io, players, worldItems);
     initTradeHandlers(socket, io, players);
+    initAdminHandlers(socket, io, players, worldItems);
     
     // Handle disconnection
     socket.on('disconnect', () => {

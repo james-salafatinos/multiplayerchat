@@ -67,7 +67,7 @@ export function createItem(world, options = {}) {
         gltfPath: config.gltfPath
     }));
     
-    // Try to load GLTF model if path is provided
+    // Try to load GLTF/GLB model if path is provided
     if (config.gltfPath) {
         // Make sure we're using the correct path format
         let modelPath = config.gltfPath;
@@ -77,47 +77,86 @@ export function createItem(world, options = {}) {
             modelPath = modelPath.substring(1);
         }
         
+        // Ensure the path is relative to the root
+        if (!modelPath.startsWith('models/') && !modelPath.startsWith('/models/')) {
+            modelPath = `models/${modelPath}`;
+        }
+        
+        // Fix file extension if needed - ensure it's .glb not .gltf
+        if (modelPath.endsWith('.gltf')) {
+            modelPath = modelPath.replace('.gltf', '.glb');
+        }
+        
         console.log(`Attempting to load 3D model from: ${modelPath}`);
-        gltfLoader.load(
-            modelPath,
-            (gltf) => {
-                // Success callback
-                console.log(`Loaded model for item ${config.name} from ${config.gltfPath}`);
-                
-                // Clear any existing meshes
-                while (itemGroup.children.length > 0) {
-                    itemGroup.remove(itemGroup.children[0]);
+        
+        // Check if file exists by making a HEAD request
+        fetch(modelPath, { method: 'HEAD' })
+            .then(response => {
+                if (response.ok) {
+                    console.log(`Model file exists at path: ${modelPath}`);
+                } else {
+                    console.error(`Model file NOT found at path: ${modelPath} (Status: ${response.status})`);
+                    // Try alternative path if file not found
+                    const altPath = modelPath.replace('.glb', '.gltf');
+                    console.log(`Trying alternative path: ${altPath}`);
+                    return fetch(altPath, { method: 'HEAD' });
                 }
-                
-                // Add the loaded model to the group
-                itemGroup.add(gltf.scene);
-                
-                // Scale the model to appropriate size
-                const box = new THREE.Box3().setFromObject(gltf.scene);
-                const size = box.getSize(new THREE.Vector3());
-                const maxDim = Math.max(size.x, size.y, size.z);
-                const scale = config.size / maxDim;
-                gltf.scene.scale.set(scale, scale, scale);
-                
-                // Ensure all meshes in the model have the entity ID for raycasting
-                gltf.scene.traverse((child) => {
-                    if (child.isMesh) {
-                        child.userData.entityId = entity.id;
+            })
+            .then(response => {
+                if (response && response.ok) {
+                    console.log(`Model file found at alternative path: ${modelPath.replace('.glb', '.gltf')}`);
+                    // Update the path for loading
+                    modelPath = modelPath.replace('.glb', '.gltf');
+                }
+            })
+            .catch(error => {
+                console.error(`Error checking model file: ${error}`);
+            });
+        
+        // Add a small delay to ensure fetch completes before loading
+        setTimeout(() => {
+            console.log(`Loading model from: ${modelPath}`);
+            gltfLoader.load(
+                modelPath,
+                (gltf) => {
+                    // Success callback
+                    console.log(`Loaded model for item ${config.name} from ${config.gltfPath}`);
+                    
+                    // Clear any existing meshes
+                    while (itemGroup.children.length > 0) {
+                        itemGroup.remove(itemGroup.children[0]);
                     }
-                });
-            },
-            (xhr) => {
-                // Progress callback
-                console.log(`${(xhr.loaded / xhr.total * 100)}% loaded for ${config.name}`);
-            },
-            (error) => {
-                // Error callback
-                console.error(`Error loading model for ${config.name}:`, error);
-                
-                // Fallback to a simple box if model loading fails
-                createFallbackMesh(itemGroup, config, entity.id);
-            }
-        );
+                    
+                    // Add the loaded model to the group
+                    itemGroup.add(gltf.scene);
+                    
+                    // Scale the model to appropriate size
+                    const box = new THREE.Box3().setFromObject(gltf.scene);
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const scale = config.size / maxDim;
+                    gltf.scene.scale.set(scale, scale, scale);
+                    
+                    // Ensure all meshes in the model have the entity ID for raycasting
+                    gltf.scene.traverse((child) => {
+                        if (child.isMesh) {
+                            child.userData.entityId = entity.id;
+                        }
+                    });
+                },
+                (xhr) => {
+                    // Progress callback
+                    console.log(`${(xhr.loaded / xhr.total * 100)}% loaded for ${config.name}`);
+                },
+                (error) => {
+                    // Error callback
+                    console.error(`Error loading model for ${config.name}:`, error);
+                    
+                    // Fallback to a simple box if model loading fails
+                    createFallbackMesh(itemGroup, config, entity.id);
+                }
+            );
+        }, 500); // 500ms delay to ensure fetch completes
     } else {
         // No GLTF path, use a simple box
         createFallbackMesh(itemGroup, config, entity.id);
@@ -225,13 +264,16 @@ export function createBasicItem(world, options = {}) {
     // Default options for basic item
     const config = {
         uuid: options.uuid || `item-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        id: 1,
-        name: 'Basic Item',
-        description: 'A basic item that can be picked up',
+        id: options.id || 1,
+        name: options.name || 'Basic Item',
+        description: options.description || 'A basic item that can be picked up',
         position: options.position || new THREE.Vector3(0, 0.15, 0), // Slightly above ground
         color: 0x3498db, // Blue color
+        gltfPath: options.gltfPath || null, // Make sure gltfPath is explicitly passed
         ...options
     };
+    
+    console.log('Creating basic item with config:', config);
     
     return createItem(world, config);
 }

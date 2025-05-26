@@ -67,6 +67,53 @@ export class InventorySystem extends System {
                 this.showStatusMessage(data.message || `Item was already picked up.`);
                 this.isItemBeingPickedUp = false;
             });
+            
+            // Listen for inventory updates from server
+            this.socket.on('inventory update', (data) => {
+                console.log('[InventorySystem] Received inventory update from server:', data);
+                
+                // Find local player entity
+                if (!this.world) {
+                    console.warn('[InventorySystem] inventory update: this.world is not yet available.');
+                    window.pendingInventory = data.inventory; // Store for later application
+                    this.isItemBeingPickedUp = false;
+                    return;
+                }
+                
+                const localPlayerEntity = this.world.entities.find(entity => 
+                    entity.active && 
+                    entity.hasComponent('PlayerComponent') && 
+                    entity.getComponent('PlayerComponent').isLocalPlayer
+                );
+                
+                if (localPlayerEntity && localPlayerEntity.hasComponent('InventoryComponent')) {
+                    // Update inventory component with new data
+                    const inventoryComponent = localPlayerEntity.getComponent('InventoryComponent');
+                    inventoryComponent.slots = data.inventory;
+                    
+                    // Update UI
+                    this.updateInventoryUI(inventoryComponent);
+                    
+                    // Show status message if provided
+                    if (data.message) {
+                        this.showStatusMessage(data.message);
+                    }
+                    
+                    // Dispatch event for other systems
+                    document.dispatchEvent(new CustomEvent('local-inventory-changed', {
+                        detail: {
+                            inventory: data.inventory,
+                            item: data.item,
+                            message: data.message
+                        }
+                    }));
+                } else {
+                    console.warn('[InventorySystem] inventory update: Local player or InventoryComponent not found.');
+                    window.pendingInventory = data.inventory; // Store for later application
+                }
+                
+                this.isItemBeingPickedUp = false;
+            });
         }
         
         // Set up inventory UI

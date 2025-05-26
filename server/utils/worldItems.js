@@ -16,6 +16,9 @@ export function initializeWorldItems() {
     // Load items from database
     const items = statements.getWorldItems.all();
     items.forEach(item => {
+      // Get full item definition from itemManager
+      const itemDef = getItemById(item.item_id);
+      
       worldItems.set(item.item_uuid, {
         uuid: item.item_uuid,
         id: item.item_id,
@@ -25,7 +28,10 @@ export function initializeWorldItems() {
           x: item.position_x,
           y: item.position_y,
           z: item.position_z
-        }
+        },
+        // Include gltfPath and other properties from item definition
+        gltfPath: itemDef ? itemDef.gltfPath : null,
+        inventoryIconPath: itemDef ? itemDef.inventoryIconPath : null
       });
     });
     console.log(`Loaded ${worldItems.size} items from database`);
@@ -48,21 +54,27 @@ export function initializeWorldItems() {
           id: basicItemDef.id, 
           name: basicItemDef.name, 
           description: basicItemDef.description,
-          position: { x: 2, y: 0.15, z: 2 } 
+          position: { x: 2, y: 0.15, z: 2 },
+          gltfPath: basicItemDef.gltfPath,
+          inventoryIconPath: basicItemDef.inventoryIconPath
         },
         { 
           uuid: 'item-2', 
           id: basicItemDef.id, 
           name: basicItemDef.name, 
           description: basicItemDef.description,
-          position: { x: -2, y: 0.15, z: 2 } 
+          position: { x: -2, y: 0.15, z: 2 },
+          gltfPath: basicItemDef.gltfPath,
+          inventoryIconPath: basicItemDef.inventoryIconPath
         },
         { 
           uuid: 'item-3', 
           id: basicItemDef.id, 
           name: basicItemDef.name, 
           description: basicItemDef.description,
-          position: { x: 2, y: 0.15, z: -2 } 
+          position: { x: 2, y: 0.15, z: -2 },
+          gltfPath: basicItemDef.gltfPath,
+          inventoryIconPath: basicItemDef.inventoryIconPath
         }
       ];
       
@@ -102,11 +114,16 @@ export function initializeWorldItems() {
 export function addWorldItem(worldItems, item) {
   try {
     // If only item ID is provided, get full item details from item manager
-    if (item.id && (!item.name || !item.description)) {
+    if (item.id) {
       const itemDef = getItemById(item.id);
       if (itemDef) {
-        item.name = itemDef.name;
-        item.description = itemDef.description;
+        // Only set these if not already provided
+        if (!item.name) item.name = itemDef.name;
+        if (!item.description) item.description = itemDef.description;
+        
+        // Always ensure these properties are set from the item definition
+        item.gltfPath = item.gltfPath || itemDef.gltfPath;
+        item.inventoryIconPath = item.inventoryIconPath || itemDef.inventoryIconPath;
       } else {
         console.warn(`Item definition not found for ID: ${item.id}`);
       }
