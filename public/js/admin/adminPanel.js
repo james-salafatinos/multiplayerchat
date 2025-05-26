@@ -28,7 +28,7 @@ function createAdminUI() {
     const adminPanel = document.createElement('div');
     adminPanel.id = 'admin-panel';
     adminPanel.classList.add('admin-panel', 'hidden');
-    
+
     // Admin panel content
     adminPanel.innerHTML = `
         <div class="admin-header">
@@ -41,6 +41,11 @@ function createAdminUI() {
             <button id="admin-login">Login</button>
         </div>
         <div class="admin-content hidden" id="admin-content">
+            <div class="admin-tabs">
+                <button class="admin-tab active" data-tab="items">Items</button>
+                <button class="admin-tab" data-tab="skills">Skills</button>
+            </div>
+            <div class="admin-tab-content active" id="tab-items">
             <div class="admin-section">
                 <h3>Spawn Item</h3>
                 <select id="item-select">
@@ -69,25 +74,45 @@ function createAdminUI() {
                     <p>No items in world</p>
                 </div>
             </div>
+            </div>
+            <div class="admin-tab-content" id="tab-skills">
+                <div class="admin-section">
+                    <h3>Award XP</h3>
+                    <select id="player-select">
+                        <option value="">Select a player...</option>
+                    </select>
+                    <select id="skill-select">
+                        <option value="">Select a skill...</option>
+                        <option value="strength">Strength</option>
+                        <option value="hitpoints">Hitpoints</option>
+                        <option value="mining">Mining</option>
+                        <option value="magic">Magic</option>
+                    </select>
+                    <input type="number" id="xp-amount" placeholder="XP Amount" min="1" value="100">
+                    <button id="award-xp">Award XP</button>
+                    <div id="xp-result" class="admin-result"></div>
+                </div>
+            </div>
         </div>
     `;
-    
+
     document.body.appendChild(adminPanel);
-    
+
     // Add CSS for admin panel
     const style = document.createElement('style');
     style.textContent = `
         .admin-button {
             position: fixed;
-            bottom: 10px;
-            left: 10px;
-            z-index: 1000;
-            background-color: #3498db;
+            top: 10px;
+            right: 10px;
+            background-color: #e94560;
             color: white;
             border: none;
+            padding: 8px 16px;
             border-radius: 4px;
-            padding: 8px 12px;
             cursor: pointer;
+            font-weight: bold;
+            z-index: 1000;
         }
         
         .admin-panel {
@@ -95,74 +120,131 @@ function createAdminUI() {
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 400px;
+            width: 500px;
             max-height: 80vh;
-            background-color: #f8f9fa;
+            background-color: rgba(22, 33, 62, 0.95);
+            border: 2px solid #444;
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            padding: 20px;
             z-index: 1001;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow-y: auto;
+        }
+        
+        .admin-panel.hidden {
+            display: none;
         }
         
         .admin-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 16px;
-            background-color: #3498db;
-            color: white;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #444;
         }
         
         .admin-header h2 {
+            color: #e94560;
             margin: 0;
-            font-size: 18px;
         }
         
-        .admin-header button {
+        #admin-close {
             background: none;
             border: none;
-            color: white;
-            font-size: 24px;
+            color: #aaa;
+            font-size: 1.5rem;
             cursor: pointer;
+            padding: 0;
+            line-height: 1;
         }
         
-        .admin-auth, .admin-content, .admin-section {
-            padding: 16px;
+        #admin-close:hover {
+            color: #e94560;
+        }
+        
+        .admin-tabs {
+            display: flex;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #444;
+        }
+        
+        .admin-tab {
+            background: none;
+            border: none;
+            color: #aaa;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-weight: bold;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+        }
+        
+        .admin-tab.active {
+            color: #e94560;
+            border-bottom: 2px solid #e94560;
+        }
+        
+        .admin-tab-content {
+            display: none;
+        }
+        
+        .admin-tab-content.active {
+            display: block;
         }
         
         .admin-section {
-            margin-bottom: 16px;
-            border-bottom: 1px solid #e0e0e0;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: rgba(42, 42, 64, 0.7);
+            border-radius: 4px;
         }
         
         .admin-section h3 {
             margin-top: 0;
+            color: #e94560;
+            margin-bottom: 10px;
+        }
+        
+        .admin-content.hidden, .admin-auth.hidden {
+            display: none;
+        }
+        
+        input, select, button {
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border: 1px solid #444;
+            background-color: #2a2a40;
+            color: white;
+        }
+        
+        button {
+            background-color: #e94560;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            background-color: #c13e54;
         }
         
         .position-inputs {
             display: flex;
-            gap: 8px;
-            margin: 12px 0;
+            gap: 10px;
+            margin: 10px 0;
         }
         
         .position-inputs input {
             width: 60px;
         }
         
-        #item-select, #spawn-item, #refresh-items {
-            width: 100%;
-            padding: 8px;
-            margin: 8px 0;
-        }
-        
-        .world-items-list {
+        #world-items-list {
             max-height: 200px;
             overflow-y: auto;
-            border: 1px solid #e0e0e0;
-            border-radius: 4px;
-            padding: 8px;
+            margin-top: 10px;
         }
         
         .world-item {
@@ -170,27 +252,53 @@ function createAdminUI() {
             justify-content: space-between;
             align-items: center;
             padding: 8px;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid #444;
         }
         
         .world-item:last-child {
             border-bottom: none;
         }
         
-        .world-item button {
-            background-color: #e74c3c;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 4px 8px;
-            cursor: pointer;
+        .world-item-name {
+            font-weight: bold;
+            color: #e94560;
         }
         
-        .hidden {
-            display: none !important;
+        .world-item-pos {
+            font-size: 0.8rem;
+            color: #aaa;
+        }
+        
+        .world-item-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .world-item-actions button {
+            padding: 4px 8px;
+            font-size: 0.8rem;
+        }
+        
+        .admin-result {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        
+        .admin-result.success {
+            background-color: rgba(39, 174, 96, 0.3);
+            border: 1px solid #27ae60;
+            color: #2ecc71;
+        }
+        
+        .admin-result.error {
+            background-color: rgba(231, 76, 60, 0.3);
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
         }
     `;
-    
+
     document.head.appendChild(style);
 }
 
@@ -198,135 +306,299 @@ function createAdminUI() {
  * Set up event listeners for the admin panel
  */
 function setupEventListeners() {
-    const socket = getSocket();
-    if (!socket) {
-        console.error('Socket not available for admin panel');
-        return;
-    }
-    
-    // Admin button click
-    document.getElementById('admin-button').addEventListener('click', () => {
-        document.getElementById('admin-panel').classList.remove('hidden');
+    const adminButton = document.getElementById('admin-button');
+    const adminPanel = document.getElementById('admin-panel');
+    const adminClose = document.getElementById('admin-close');
+    const adminLogin = document.getElementById('admin-login');
+    const adminAuth = document.getElementById('admin-auth');
+    const adminContent = document.getElementById('admin-content');
+    const spawnItem = document.getElementById('spawn-item');
+    const refreshItems = document.getElementById('refresh-items');
+    const awardXp = document.getElementById('award-xp');
+
+    // Toggle admin panel
+    adminButton.addEventListener('click', () => {
+        adminPanel.classList.toggle('hidden');
     });
-    
-    // Close button click
-    document.getElementById('admin-close').addEventListener('click', () => {
-        document.getElementById('admin-panel').classList.add('hidden');
+
+    // Close admin panel
+    adminClose.addEventListener('click', () => {
+        adminPanel.classList.add('hidden');
     });
-    
+
     // Admin login
-    document.getElementById('admin-login').addEventListener('click', () => {
+    adminLogin.addEventListener('click', () => {
         const password = document.getElementById('admin-password').value;
-        socket.emit('admin:auth', { password });
-    });
-    
-    // Spawn item button
-    document.getElementById('spawn-item').addEventListener('click', () => {
-        if (!isAdmin) return;
+        const socket = getSocket();
         
-        const itemId = document.getElementById('item-select').value;
-        if (!itemId) {
-            alert('Please select an item to spawn');
-            return;
-        }
-        
-        const position = {
-            x: parseFloat(document.getElementById('pos-x').value),
-            y: parseFloat(document.getElementById('pos-y').value),
-            z: parseFloat(document.getElementById('pos-z').value)
-        };
-        
-        socket.emit('admin:spawnItem', { itemId, position });
-    });
-    
-    // Refresh world items
-    document.getElementById('refresh-items').addEventListener('click', () => {
-        if (!isAdmin) return;
-        socket.emit('admin:getWorldItems');
-    });
-    
-    // Socket event listeners
-    socket.on('admin:auth:response', (data) => {
-        if (data.success) {
-            isAdmin = true;
-            document.getElementById('admin-auth').classList.add('hidden');
-            document.getElementById('admin-content').classList.remove('hidden');
+        if (socket) {
+            // Send authentication request to server
+            socket.emit('admin:auth', { password });
             
-            // Load available items
-            socket.emit('admin:getItems');
-            socket.emit('admin:getWorldItems');
+            // Listen for response
+            socket.once('admin:auth:response', (response) => {
+                if (response.success) {
+                    isAdmin = true;
+                    adminAuth.classList.add('hidden');
+                    adminContent.classList.remove('hidden');
+                    
+                    console.log('Admin authentication successful, fetching items and players...');
+                    // Load available items and players
+                    fetchAvailableItems();
+                    fetchWorldItems();
+                    fetchPlayers();
+                } else {
+                    alert('Invalid password');
+                }
+            });
         } else {
-            alert('Admin authentication failed');
+            alert('Not connected to server');
         }
     });
-    
-    socket.on('admin:itemsList', (items) => {
-        availableItems = items;
-        updateItemSelect();
+
+    // Tab switching
+    const tabs = document.querySelectorAll('.admin-tab');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            // Remove active class from all tabs and tab contents
+            document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.admin-tab-content').forEach(c => c.classList.remove('active'));
+
+            // Add active class to clicked tab and corresponding content
+            tab.classList.add('active');
+            const tabName = tab.dataset.tab;
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+
+            // Refresh data based on tab
+            if (tabName === 'items') {
+                fetchAvailableItems();
+                fetchWorldItems();
+            } else if (tabName === 'skills') {
+                fetchPlayers();
+            }
+        });
     });
-    
-    socket.on('admin:worldItemsList', (items) => {
-        worldItems = items;
-        updateWorldItemsList();
-    });
-    
-    socket.on('admin:spawnItem:response', (data) => {
-        if (data.success) {
-            alert(data.message);
-            socket.emit('admin:getWorldItems');
-        } else {
-            alert(`Error: ${data.message}`);
-        }
-    });
-    
-    socket.on('admin:error', (data) => {
-        alert(`Admin Error: ${data.message}`);
-    });
+
+    // Spawn item
+    if (spawnItem) {
+        spawnItem.addEventListener('click', () => {
+            const itemId = document.getElementById('item-select').value;
+            const posX = parseFloat(document.getElementById('pos-x').value);
+            const posY = parseFloat(document.getElementById('pos-y').value);
+            const posZ = parseFloat(document.getElementById('pos-z').value);
+
+            if (!itemId) {
+                alert('Please select an item');
+                return;
+            }
+
+            const socket = getSocket();
+            if (socket) {
+                socket.emit('admin:spawnItem', {
+                    itemId,
+                    position: { x: posX, y: posY, z: posZ }
+                });
+
+                // Update world items list after a short delay
+                setTimeout(fetchWorldItems, 500);
+            }
+        });
+    }
+
+    // Award XP
+    if (awardXp) {
+        awardXp.addEventListener('click', () => {
+            const username = document.getElementById('player-select').value;
+            const skill = document.getElementById('skill-select').value;
+            const xp = parseInt(document.getElementById('xp-amount').value);
+            const resultElement = document.getElementById('xp-result');
+
+            if (!username || !skill || isNaN(xp) || xp <= 0) {
+                resultElement.textContent = 'Please fill in all fields correctly';
+                resultElement.className = 'admin-result error';
+                return;
+            }
+
+            const socket = getSocket();
+            if (socket) {
+                socket.emit('admin:awardXp', {
+                    username,
+                    skill,
+                    xp
+                });
+
+                // Listen for response
+                socket.once('admin:awardXp:response', (response) => {
+                    if (response.success) {
+                        resultElement.textContent = response.message;
+                        resultElement.className = 'admin-result success';
+
+                        // Show level up info if applicable
+                        if (response.levelUps && response.levelUps.length > 0) {
+                            const levelUp = response.levelUps[0];
+                            resultElement.textContent += ` Level up! ${levelUp.skill} is now level ${levelUp.newLevel}!`;
+                        }
+                    } else {
+                        resultElement.textContent = response.message || 'Error awarding XP';
+                        resultElement.className = 'admin-result error';
+                    }
+                });
+            }
+        });
+    }
+
+    // Refresh items
+    if (refreshItems) {
+        refreshItems.addEventListener('click', () => {
+            fetchAvailableItems();
+            fetchWorldItems();
+        });
+    }
+
+    // Set up event delegation for world item actions
+    const worldItemsList = document.getElementById('world-items-list');
+    if (worldItemsList) {
+        worldItemsList.addEventListener('click', (event) => {
+            const target = event.target;
+
+            // Handle delete button
+            if (target.classList.contains('delete-item')) {
+                const itemUuid = target.dataset.uuid;
+                const socket = getSocket();
+
+                if (socket && itemUuid) {
+                    socket.emit('admin:removeWorldItem', { uuid: itemUuid });
+
+                    // Update world items list after a short delay
+                    setTimeout(fetchWorldItems, 500);
+                }
+            }
+
+            // Handle teleport button
+            if (target.classList.contains('teleport-to-item')) {
+                const itemUuid = target.dataset.uuid;
+                const item = worldItems.find(item => item.uuid === itemUuid);
+
+                if (item && item.position) {
+                    const socket = getSocket();
+                    if (socket) {
+                        socket.emit('player:teleport', {
+                            position: item.position
+                        });
+                    }
+                }
+            }
+        });
+    }
 }
 
+function fetchAvailableItems() {
+    const socket = getSocket();
+    if (socket) {
+        // Set up a one-time listener for the response
+        socket.once('admin:availableItems', (items) => {
+            console.log('Received available items:', items);
+            availableItems = items;
+            updateItemSelect();
+        });
+
+        // Request available items
+        socket.emit('admin:getAvailableItems');
+    }
+}
+function fetchWorldItems() {
+    const socket = getSocket();
+    if (socket) {
+        // Set up a one-time listener for the response
+        socket.once('admin:worldItems', (items) => {
+            console.log('Received world items:', items);
+            worldItems = items;
+            updateWorldItemsList();
+        });
+
+        // Request world items
+        socket.emit('admin:getWorldItems');
+    }
+}
+function fetchPlayers() {
+    const socket = getSocket();
+    if (socket) {
+        // Set up a one-time listener for the response
+        socket.once('admin:players', (players) => {
+            console.log('Received players:', players);
+            updatePlayerSelect(players);
+        });
+
+        // Request players
+        socket.emit('admin:getPlayers');
+    }
+}
 /**
- * Update the item select dropdown with available items
+ * Update player select dropdown with online players
  */
-function updateItemSelect() {
-    const select = document.getElementById('item-select');
+function updatePlayerSelect(players) {
+    const playerSelect = document.getElementById('player-select');
+    if (!playerSelect) return;
     
     // Clear existing options except the first one
-    while (select.options.length > 1) {
-        select.remove(1);
+    while (playerSelect.options.length > 1) {
+        playerSelect.remove(1);
     }
     
-    // Add options for each available item
-    availableItems.forEach(item => {
-        const option = document.createElement('option');
-        option.value = item.id;
-        option.textContent = `${item.name} (${item.id})`;
-        select.appendChild(option);
-    });
+    // Add players to select
+    if (players && players.length > 0) {
+        players.forEach(player => {
+            const option = document.createElement('option');
+            option.value = player.username;
+            option.textContent = player.username;
+            playerSelect.appendChild(option);
+        });
+    }
 }
+
+    /**
+     * Update the item select dropdown with available items
+     */
+    function updateItemSelect() {
+        const select = document.getElementById('item-select');
+
+        // Clear existing options except the first one
+        while (select.options.length > 1) {
+            select.remove(1);
+        }
+
+        // Add options for each available item
+        availableItems.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item.id;
+            option.textContent = `${item.name} (${item.id})`;
+            select.appendChild(option);
+        });
+    }
 
 /**
  * Update the world items list
  */
 function updateWorldItemsList() {
     const container = document.getElementById('world-items-list');
-    
+
     if (worldItems.length === 0) {
         container.innerHTML = '<p>No items in world</p>';
         return;
     }
-    
+
     container.innerHTML = '';
-    
+
     worldItems.forEach(item => {
         const itemElement = document.createElement('div');
         itemElement.classList.add('world-item');
-        
+
         const itemInfo = document.createElement('div');
         itemInfo.innerHTML = `
             <strong>${item.name}</strong> (${item.id})<br>
             Position: ${item.position.x.toFixed(1)}, ${item.position.y.toFixed(1)}, ${item.position.z.toFixed(1)}
         `;
-        
+
         const removeButton = document.createElement('button');
         removeButton.textContent = 'Remove';
         removeButton.addEventListener('click', () => {
@@ -337,7 +609,7 @@ function updateWorldItemsList() {
                 }
             }
         });
-        
+
         itemElement.appendChild(itemInfo);
         itemElement.appendChild(removeButton);
         container.appendChild(itemElement);

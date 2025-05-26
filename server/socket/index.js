@@ -6,6 +6,7 @@ import { initInventoryHandlers } from './inventory.js';
 import { initPlayerHandlers } from './player.js';
 import { initTradeHandlers, activeTrades } from './trade.js';
 import { initAdminHandlers } from './admin.js';
+import setupSkillsHandlers from './skills.js';
 import { statements } from '../db/index.js';
 import { getItemById } from '../utils/itemManager.js';
 import { isUserLoggedIn, updateSessionActivity, activeSessions } from '../routes/auth.js';
@@ -284,6 +285,8 @@ export function initSocketHandlers(io, players, worldItems) {
     // Add player to the players map
     players.set(socket.id, newPlayer);
     
+
+    
     // Emit other players list to the new client (excluding the new player)
     const otherPlayers = Array.from(players.values())
       .filter(player => player.id !== socket.id)
@@ -346,18 +349,24 @@ export function initSocketHandlers(io, players, worldItems) {
     const worldItemsArray = Array.from(worldItems.values());
     socket.emit('world items state', worldItemsArray);
     
-    // Initialize all handlers
-    initChatHandlers(socket, io);
+    // Initialize socket handlers
+    initChatHandlers(socket, io, players);
     initInventoryHandlers(socket, io, players, worldItems);
     initPlayerHandlers(socket, io, players, worldItems);
-    initTradeHandlers(socket, io, players);
+    initTradeHandlers(socket, io, players, activeTrades);
+    setupSkillsHandlers(socket, io, players);
     initAdminHandlers(socket, io, players, worldItems);
+    
+    // Initialize skills handlers if user is authenticated
+    if (socket.userId) {
+      const userData = { id: socket.userId, username: socket.username };
+      setupSkillsHandlers(io, socket, players, userData);
+    }
     
     // Handle disconnection
     socket.on('disconnect', () => {
       console.log('User disconnected:', socket.id);
       
-      // If this is an authenticated user, remove their socket from the active sockets map
       if (socket.userId) {
         // Only remove if this is the current active socket for this user
         if (activeUserSockets.get(socket.userId) === socket.id) {

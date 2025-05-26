@@ -13,8 +13,10 @@ import { CameraSystem } from './ecs/cameraSystem.js';
 import { ChatBubbleSystem } from './ecs/chatBubbleSystem.js';
 import { InventorySystem } from './ecs/inventorySystem.js';
 import { ContextMenuSystem } from './ecs/contextMenuSystem.js';
+import { SkillsSystem } from './ecs/skillsSystem.js';
 import { getContextMenuManager } from './contextMenu.js';
 import { InventoryComponent } from './ecs/inventoryComponents.js';
+import { SkillsComponent } from './ecs/skillsComponents.js';
 import { updatePlayerEntityMeshes } from './ecs/playerEntityHelper.js';
 
 // Initialize the ECS world
@@ -47,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 position: { x: 0, y: 0.5, z: 0 } // Default position
             });
             localPlayerEntity.addComponent(new InventoryComponent());
+            localPlayerEntity.addComponent(new SkillsComponent());
             playerEntities.set(playerId, localPlayerEntity);
             const checkComp = localPlayerEntity.getComponent(InventoryComponent);
             console.log(`[App.js 'local-player-id-assigned'] Added InventoryComponent to ${playerId}. Immediately retrieved: ${checkComp ? 'Found' : 'NOT Found'}`);
@@ -124,6 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
     world.registerSystem(new InventorySystem(socket));
     world.registerSystem(new CameraSystem());
     world.registerSystem(new ContextMenuSystem(socket));
+    world.registerSystem(new SkillsSystem(socket));
     
     // Set up initial camera position for isometric view
     camera.position.set(15, 10, 15); // Position for 45-degree isometric view

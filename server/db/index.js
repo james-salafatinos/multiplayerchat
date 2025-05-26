@@ -59,6 +59,15 @@ db.exec(`
     position_z REAL NOT NULL,
     color TEXT NOT NULL
   );
+  
+  CREATE TABLE IF NOT EXISTS player_skills (
+    user_id INTEGER PRIMARY KEY,
+    strength_xp INTEGER DEFAULT 0,
+    hitpoints_xp INTEGER DEFAULT 0,
+    mining_xp INTEGER DEFAULT 0,
+    magic_xp INTEGER DEFAULT 0,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
 `);
 
 // Check if quantity column exists in player_inventory table, if not add it
@@ -167,7 +176,16 @@ const statements = {
   // Player state statements
   getPlayerState: db.prepare('SELECT * FROM player_state WHERE user_id = ?'),
   savePlayerState: db.prepare('INSERT OR REPLACE INTO player_state (user_id, position_x, position_y, position_z, color) VALUES (?, ?, ?, ?, ?)'),
-  updatePlayerColor: db.prepare('UPDATE player_state SET color = ? WHERE user_id = ?')
+  updatePlayerColor: db.prepare('UPDATE player_state SET color = ? WHERE user_id = ?'),
+  
+  // Player skills statements
+  getPlayerSkills: db.prepare('SELECT * FROM player_skills WHERE user_id = ?'),
+  getAllPlayerSkills: db.prepare('SELECT * FROM player_skills'),
+  initPlayerSkills: db.prepare('INSERT OR IGNORE INTO player_skills (user_id) VALUES (?)'),
+  updateStrengthXp: db.prepare('UPDATE player_skills SET strength_xp = strength_xp + ? WHERE user_id = ?'),
+  updateHitpointsXp: db.prepare('UPDATE player_skills SET hitpoints_xp = hitpoints_xp + ? WHERE user_id = ?'),
+  updateMiningXp: db.prepare('UPDATE player_skills SET mining_xp = mining_xp + ? WHERE user_id = ?'),
+  updateMagicXp: db.prepare('UPDATE player_skills SET magic_xp = magic_xp + ? WHERE user_id = ?')
 };
 
 export { db, statements };
