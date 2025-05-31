@@ -1,7 +1,7 @@
 // ECS Inventory System
 // Handles inventory management and item interactions
 
-import { System } from './core.js';
+import { System } from './core/index.js';
 import * as THREE from 'three';
 import { getCamera, getRenderer } from '../three-setup.js';
 import { InventoryComponent } from './inventoryComponents.js';

@@ -2,7 +2,7 @@
 // Factories for creating common entity types
 
 import * as THREE from 'three';
-import { Entity } from './core.js';
+import { Entity } from './core/index.js';
 import { 
     TransformComponent, 
     MeshComponent, 

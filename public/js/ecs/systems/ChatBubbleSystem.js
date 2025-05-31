@@ -1,9 +1,9 @@
 // Chat Bubble System
 // Manages chat bubbles displayed above player heads
 
-import { System } from './core.js';
-import { ChatBubbleComponent } from './components.js';
-import { getCamera, getRenderer } from '../three-setup.js';
+import { System } from '../core/index.js';
+import { ChatBubbleComponent } from '../components/chatBubbleComponent.js';
+import { getCamera, getRenderer } from '../../three-setup.js';
 import * as THREE from 'three';
 
 /**

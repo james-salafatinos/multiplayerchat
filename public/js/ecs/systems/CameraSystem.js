@@ -1,8 +1,8 @@
 // Camera System
 // Handles updating the camera to follow the player while allowing free orbit rotation
 
-import { System } from './core.js';
-import { getCamera, getControls } from '../three-setup.js';
+import { System } from '../core/index.js';
+import { getCamera, getControls } from '../../three-setup.js';
 import * as THREE from 'three';
 
 /**

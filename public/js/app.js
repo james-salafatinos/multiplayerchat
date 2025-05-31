@@ -5,19 +5,18 @@ import { getCurrentUser } from './auth/auth.js';
 import { initChat } from './chat.js';
 import { handleTradeRequest, handleTradeRequestResponse } from './trade/index.js';
 import { initAdminPanel } from './admin/adminPanel.js';
-import { World } from './ecs/core.js';
+import { World } from './ecs/core/index.js';
 import { createCube, createGround, createPlayer } from './ecs/entities.js';
 import { createBasicItem } from './ecs/inventoryEntities.js';
-import { RenderSystem, RotationSystem, MovementSystem } from './ecs/systems.js';
-import { CameraSystem } from './ecs/cameraSystem.js';
-import { ChatBubbleSystem } from './ecs/chatBubbleSystem.js';
+import { RenderSystem, RotationSystem, MovementSystem } from './ecs/systems/index.js';
+import { CameraSystem, ChatBubbleSystem, ContextMenuSystem  } from './ecs/systems/index.js';
 import { InventorySystem } from './ecs/inventorySystem.js';
-import { ContextMenuSystem } from './ecs/contextMenuSystem.js';
 import { SkillsSystem } from './ecs/skillsSystem.js';
-import { getContextMenuManager } from './contextMenu.js';
 import { InventoryComponent } from './ecs/inventoryComponents.js';
 import { SkillsComponent } from './ecs/skillsComponents.js';
 import { updatePlayerEntityMeshes } from './ecs/playerEntityHelper.js';
+
+
 
 // Initialize the ECS world
 const world = new World();

@@ -1,11 +1,11 @@
 // Context Menu System
 // Handles right-click context menu interactions with the game world
 
-import { System } from './core.js';
-import { getCamera, getScene } from '../three-setup.js';
-import { getContextMenuManager } from '../contextMenu.js';
+import { System } from '../core/index.js';
+import { getCamera, getScene } from '../../three-setup.js';
+import { getContextMenuManager } from '../../contextMenu.js';
 import * as THREE from 'three';
-import { requestTrade } from '../trade/index.js';
+import { requestTrade } from '../../trade/index.js';
 
 /**
  * Context Menu System

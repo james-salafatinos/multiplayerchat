@@ -1,7 +1,7 @@
 // ECS Inventory Components
 // Components for inventory and item functionality
 
-import { Component } from './core.js';
+import { Component } from './core/index.js';
 
 /**
  * Item Component

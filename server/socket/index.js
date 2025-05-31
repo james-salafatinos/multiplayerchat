@@ -354,12 +354,11 @@ export function initSocketHandlers(io, players, worldItems) {
     initInventoryHandlers(socket, io, players, worldItems);
     initPlayerHandlers(socket, io, players, worldItems);
     initTradeHandlers(socket, io, players, activeTrades);
-    setupSkillsHandlers(socket, io, players);
     initAdminHandlers(socket, io, players, worldItems);
     
     // Initialize skills handlers if user is authenticated
     if (socket.userId) {
-      const userData = { id: socket.userId, username: socket.username };
+      const userData = { userId: socket.userId, username: socket.username };  // Changed id to userId
       setupSkillsHandlers(io, socket, players, userData);
     }
     

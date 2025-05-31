@@ -150,10 +150,14 @@ function awardXp(userId, skill, xp) {
 export default function setupSkillsHandlers(io, socket, players, userData) {
   // Initialize player skills on connection
   try {
-    statements.initPlayerSkills.run(userData.id);
+    if (!userData || !userData.userId) {
+      throw new Error('User data is missing userId');
+    }
+    
+    statements.initPlayerSkills.run(userData.userId);
     
     // Get initial skills data
-    const skillsData = getPlayerSkillsData(userData.id);
+    const skillsData = getPlayerSkillsData(userData.userId);
     
     // Send initial skills data to client
     socket.emit('skills:update', { skills: skillsData });

@@ -1,7 +1,7 @@
 // ECS Skills System
 // Handles skills UI and XP interactions
 
-import { System } from './core.js';
+import { System } from './core/index.js';
 import { SkillsComponent } from './skillsComponents.js';
 
 /**
@@ -336,6 +336,7 @@ export class SkillsSystem extends System {
             skillsToggle.id = 'skills-toggle';
             skillsToggle.className = 'skills-toggle';
             skillsToggle.textContent = 'Skills';
+  
             document.body.appendChild(skillsToggle);
         }
         

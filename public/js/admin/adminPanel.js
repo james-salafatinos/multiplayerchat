@@ -104,7 +104,7 @@ function createAdminUI() {
         .admin-button {
             position: fixed;
             top: 10px;
-            right: 10px;
+            left: 10px;
             background-color: #e94560;
             color: white;
             border: none;
