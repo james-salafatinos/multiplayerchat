@@ -13,7 +13,7 @@ import {
 } from '../components/index.js';
 import { getSocket } from '../../network.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-
+import { createItemEntity } from './createItemEntity.js';
 // Create a loader instance to be reused
 const gltfLoader = new GLTFLoader();
 
@@ -38,5 +38,5 @@ export function createBasicItemEntity(world, options = {}) {
     
     console.log('Creating basic item with config:', config);
     
-    return createItem(world, config);
+    return createItemEntity(world, config);
 }
