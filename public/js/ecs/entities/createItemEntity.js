@@ -2,16 +2,16 @@
 // Factories for creating inventory-related entities
 
 import * as THREE from 'three';
-import { Entity } from './core/index.js';
+import { Entity } from '../core/index.js';
 import { 
     TransformComponent, 
     MeshComponent
-} from './components.js';
+} from '../components/index.js';
 import {
     ItemComponent,
     InteractableComponent
-} from './inventoryComponents.js';
-import { getSocket } from '../network.js';
+} from '../components/index.js';
+import { getSocket } from '../../network.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // Create a loader instance to be reused
@@ -23,7 +23,7 @@ const gltfLoader = new GLTFLoader();
  * @param {Object} options - Optional configuration parameters
  * @returns {Entity} The created item entity
  */
-export function createItem(world, options = {}) {
+export function createItemEntity(world, options = {}) {
     // Default options
     const config = {
         uuid: options.uuid || null, // Unique identifier for world items
@@ -194,6 +194,7 @@ export function createItem(world, options = {}) {
     return entity;
 }
 
+
 /**
  * Create a fallback mesh for items when GLTF loading fails or is not available
  * @param {THREE.Group} group - The group to add the mesh to
@@ -216,64 +217,4 @@ function createFallbackMesh(group, config, entityId) {
     
     // Add mesh to group
     group.add(mesh);
-}
-
-/**
- * Create a default item for a player's inventory (not in the world)
- * @param {World} world - The ECS world to add the entity to
- * @param {Object} options - Optional configuration parameters
- * @returns {Entity} The created item entity
- */
-export function createDefaultItem(world, options = {}) {
-    // Default options for the default item
-    const config = {
-        id: 0,
-        name: 'Default Item',
-        description: 'The default item that every player starts with',
-        ownerId: options.ownerId || null,
-        slotIndex: options.slotIndex || 0,
-        ...options
-    };
-    
-    // Create entity without mesh (since it's just in inventory)
-    const entity = new Entity();
-    
-    // Item component
-    entity.addComponent(new ItemComponent({
-        id: config.id,
-        name: config.name,
-        description: config.description,
-        isPickupable: false, // Cannot be dropped
-        ownerId: config.ownerId,
-        slotIndex: config.slotIndex
-    }));
-    
-    // Add entity to world
-    world.addEntity(entity);
-    
-    return entity;
-}
-
-/**
- * Create a basic item that can be picked up
- * @param {World} world - The ECS world to add the entity to
- * @param {Object} options - Optional configuration parameters
- * @returns {Entity} The created item entity
- */
-export function createBasicItem(world, options = {}) {
-    // Default options for basic item
-    const config = {
-        uuid: options.uuid || `item-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        id: options.id || 1,
-        name: options.name || 'Basic Item',
-        description: options.description || 'A basic item that can be picked up',
-        position: options.position || new THREE.Vector3(0, 0.15, 0), // Slightly above ground
-        color: 0x3498db, // Blue color
-        gltfPath: options.gltfPath || null, // Make sure gltfPath is explicitly passed
-        ...options
-    };
-    
-    console.log('Creating basic item with config:', config);
-    
-    return createItem(world, config);
 }

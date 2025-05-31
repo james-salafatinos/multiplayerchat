@@ -1,4 +1,4 @@
-import { Component } from '../core/component.js';
+import { Component } from '../core/index.js';
 import * as THREE from 'three';
 
 /**

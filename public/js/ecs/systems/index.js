@@ -11,3 +11,9 @@ export { ContextMenuSystem } from './contextMenuSystem.js';
 export { MovementSystem } from './MovementSystem.js';
 export { RenderSystem } from './RenderSystem.js';
 export { RotationSystem } from './RotationSystem.js';
+
+// Inventory Systems
+export { InventorySystem } from './InventorySystem.js';
+
+//Skills System
+export { SkillsSystem } from './SkillsSystem.js';

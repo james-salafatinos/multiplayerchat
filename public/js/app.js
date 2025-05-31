@@ -6,14 +6,15 @@ import { initChat } from './chat.js';
 import { handleTradeRequest, handleTradeRequestResponse } from './trade/index.js';
 import { initAdminPanel } from './admin/adminPanel.js';
 import { World } from './ecs/core/index.js';
-import { createCube, createGround, createPlayer } from './ecs/entities.js';
-import { createBasicItem } from './ecs/inventoryEntities.js';
+import { createCubeEntity, createGroundEntity, createPlayerEntity } from './ecs/entities/index.js';
+import { createBasicItemEntity } from './ecs/entities/index.js';
+
 import { RenderSystem, RotationSystem, MovementSystem } from './ecs/systems/index.js';
 import { CameraSystem, ChatBubbleSystem, ContextMenuSystem  } from './ecs/systems/index.js';
-import { InventorySystem } from './ecs/inventorySystem.js';
-import { SkillsSystem } from './ecs/skillsSystem.js';
-import { InventoryComponent } from './ecs/inventoryComponents.js';
-import { SkillsComponent } from './ecs/skillsComponents.js';
+import { InventorySystem } from './ecs/systems/index.js';
+import { SkillsSystem } from './ecs/systems/index.js';
+import { InventoryComponent } from './ecs/components/index.js';
+import { SkillsComponent } from './ecs/components/index.js';
 import { updatePlayerEntityMeshes } from './ecs/playerEntityHelper.js';
 
 
@@ -41,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const { playerId } = event.detail;
         if (!playerEntities.has(playerId)) {
             console.log(`[App.js 'local-player-id-assigned'] Preemptively creating local player entity: ${playerId}`);
-            const localPlayerEntity = createPlayer(world, {
+            const localPlayerEntity = createPlayerEntity(world, {
                 playerId: playerId,
                 username: 'LocalPlayer', // Temporary username, will be updated
                 isLocalPlayer: true,
@@ -111,10 +112,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Create a cube entity using ECS
-    const cube = createCube(world, { position: { x: 0, y: 1, z: 0 } });
+    const cube = createCubeEntity(world, { position: { x: 0, y: 1, z: 0 } });
     
     // Create a ground plane for players to move on
-    const ground = createGround(world, { width: 20, height: 20 });
+    const ground = createGroundEntity(world, { width: 20, height: 20 });
     
     // World items will be created from server data
     
@@ -160,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else {
                 console.log(`[App.js 'players-list'] Creating new player entity for ${player.id} (isLocal: ${isLocal}).`);
-                playerEntity = createPlayer(world, {
+                playerEntity = createPlayerEntity(world, {
                     playerId: player.id,
                     username: player.username,
                     isLocalPlayer: isLocal,
@@ -244,7 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else {
             console.log(`[App.js 'player-joined'] Creating new player entity for ${player.id} (isLocal: ${isLocal}).`);
-            playerEntity = createPlayer(world, {
+            playerEntity = createPlayerEntity(world, {
                 playerId: player.id,
                 username: player.username,
                 isLocalPlayer: isLocal,
@@ -418,7 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             // Pass all available item properties to createBasicItem
-            const itemEntity = createBasicItem(world, {
+            const itemEntity = createBasicItemEntity(world, {
                 uuid: itemData.uuid,
                 id: itemData.id,
                 name: itemData.name,
@@ -489,7 +490,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.warn('Attempted to add already existing world item entity:', itemData.uuid);
             return;
         }
-        const itemEntity = createBasicItem(world, {
+        const itemEntity = createBasicItemEntity(world, {
             uuid: itemData.uuid,
             id: itemData.id,
             name: itemData.name,

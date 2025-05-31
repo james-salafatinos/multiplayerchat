@@ -1,10 +1,10 @@
 // ECS Inventory System
 // Handles inventory management and item interactions
 
-import { System } from './core/index.js';
+import { System } from '../core/index.js';
 import * as THREE from 'three';
-import { getCamera, getRenderer } from '../three-setup.js';
-import { InventoryComponent } from './inventoryComponents.js';
+import { getCamera, getRenderer } from '../../three-setup.js';
+import { InventoryComponent } from '../components/index.js';
 
 /**
  * Inventory System
@@ -444,7 +444,7 @@ export class InventorySystem extends System {
         }
         
         // Create a new item entity from the data
-        import('./inventoryEntities.js').then(module => {
+        import('../inventoryEntities.js').then(module => {
             const { createBasicItem } = module;
             createBasicItem(this.world, data);
             

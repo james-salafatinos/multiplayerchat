@@ -1,7 +1,4 @@
-// ECS Skills Components
-// Components for player skills and XP
-
-import { Component } from './core/index.js';
+import { Component } from '../core/index.js';
 
 /**
  * Skills Component

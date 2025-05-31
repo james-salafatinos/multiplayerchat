@@ -1,9 +1,8 @@
 // ECS Skills System
 // Handles skills UI and XP interactions
 
-import { System } from './core/index.js';
-import { SkillsComponent } from './skillsComponents.js';
-
+import { System } from '../core/index.js';
+import { SkillsComponent } from '../components/index.js';
 /**
  * Skills System
  * Manages player skills, XP, and the skills UI
