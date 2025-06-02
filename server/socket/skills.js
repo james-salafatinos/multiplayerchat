@@ -174,60 +174,143 @@ export default function setupSkillsHandlers(io, socket, players, userData) {
   // Handle client requesting skills data
   socket.on('skills:request', () => {
     try {
-      const skillsData = getPlayerSkillsData(userData.id);
+      if (!socket.userId) {
+        console.error('User not authenticated for skills request');
+        return;
+      }
+      
+      const skillsData = getPlayerSkillsData(socket.userId);
       socket.emit('skills:update', { skills: skillsData });
+      
+      // Update player object with skills data
+      const player = players.get(socket.id);
+      if (player) {
+        player.skills = skillsData;
+        console.log(`Updated player object skills data for ${socket.username}:`, player.skills);
+      }
     } catch (error) {
       console.error('Error handling skills request:', error);
     }
   });
   
-  // Admin: Award XP to a player
-  socket.on('admin:awardXp', (data) => {
+  // Handle regular XP awards (non-admin)
+  socket.on('award xp', (data) => {
     try {
-      // Verify user is an admin (you might want to add proper admin checks)
-      // For now, we'll just log the action
-      console.log(`Admin ${userData.username} awarding ${data.xp} ${data.skill} XP to player ${data.username}`);
-      
-      // Find the target user ID
-      const targetUser = Array.from(players.values()).find(p => p.username === data.username);
-      
-      if (!targetUser || !targetUser.userId) {
-        socket.emit('admin:awardXp:response', { 
-          success: false, 
-          message: `Player ${data.username} not found or not online` 
-        });
+      if (!socket.userId) {
+        console.error('User not authenticated for XP award');
         return;
       }
       
+      const { skill, amount } = data;
+      console.log(`Awarding ${amount} ${skill} XP to ${socket.username}`);
+      
       // Award XP
-      const result = awardXp(targetUser.userId, data.skill, data.xp);
+      const result = awardXp(socket.userId, skill, amount);
       
-      // Notify the target player of XP gain and potential level ups
-      const targetSocket = Array.from(io.sockets.sockets.values())
-        .find(s => s.id === targetUser.socketId);
+      // Update player object with new skills data
+      const player = players.get(socket.id);
+      if (player) {
+        // Initialize skills object if it doesn't exist
+        if (!player.skills) {
+          player.skills = {};
+        }
+        
+        // Update the skills data in the player object
+        Object.keys(result.skills).forEach(skillName => {
+          if (!player.skills[skillName]) {
+            player.skills[skillName] = {};
+          }
+          player.skills[skillName] = result.skills[skillName];
+        });
+        
+        console.log(`Updated player object skills data for ${socket.username}:`, player.skills);
+      }
       
-      if (targetSocket) {
-        targetSocket.emit('skills:update', { 
-          skills: result.skills,
-          xpGained: {
-            skill: data.skill,
-            amount: data.xp
-          },
-          levelUps: result.levelUps
+      // Notify the player about the XP gain
+      socket.emit('skills update', result.skills);
+      
+      // Notify about level ups if any
+      if (result.levelUps.length > 0) {
+        result.levelUps.forEach(levelUp => {
+          socket.emit('level up', levelUp);
         });
       }
+    } catch (error) {
+      console.error(`Error awarding XP to ${socket.username}:`, error);
+    }
+  });
+  
+  // Admin: Award XP to a player
+  socket.on('award xp admin', (data) => {
+    if (!socket.isAdmin) {
+      console.log(`Non-admin user ${socket.username} attempted to use admin XP award`);
+      return;
+    }
+    
+    const { targetUsername, skill, amount } = data;
+    console.log(`Admin ${socket.username} awarding ${amount} ${skill} XP to ${targetUsername}`);
+    
+    // Find the target player's socket
+    let targetSocket = null;
+    let targetUserId = null;
+    let targetPlayer = null;
+    
+    // Search through all connected sockets to find the target player
+    for (const [socketId, playerData] of players.entries()) {
+      if (playerData.username === targetUsername) {
+        const playerSocket = io.sockets.sockets.get(socketId);
+        if (playerSocket && playerSocket.userId) {
+          targetSocket = playerSocket;
+          targetUserId = playerSocket.userId;
+          targetPlayer = playerData;
+          break;
+        }
+      }
+    }
+    
+    if (!targetUserId) {
+      console.log(`Target player ${targetUsername} not found or not authenticated`);
+      socket.emit('admin message', { message: `Player ${targetUsername} not found or not authenticated` });
+      return;
+    }
+    
+    try {
+      // Award XP to the target player
+      const result = awardXp(targetUserId, skill, amount);
       
-      // Update player object
-      if (players.has(targetUser.socketId)) {
-        const player = players.get(targetUser.socketId);
-        player.skills = result.skills;
+      // Update the player object with the new skills data
+      if (targetPlayer) {
+        // Initialize skills object if it doesn't exist
+        if (!targetPlayer.skills) {
+          targetPlayer.skills = {};
+        }
+        
+        // Update the skills data in the player object
+        Object.keys(result.skills).forEach(skillName => {
+          if (!targetPlayer.skills[skillName]) {
+            targetPlayer.skills[skillName] = {};
+          }
+          targetPlayer.skills[skillName] = result.skills[skillName];
+        });
+        
+        console.log(`Updated player object skills data for ${targetUsername}:`, targetPlayer.skills);
       }
       
-      // Send response to admin
-      socket.emit('admin:awardXp:response', { 
-        success: true, 
-        message: `Awarded ${data.xp} ${data.skill} XP to ${data.username}`,
-        levelUps: result.levelUps
+      // Notify the target player about the XP gain
+      if (targetSocket) {
+        targetSocket.emit('skills update', result.skills);
+        
+        // Notify about level ups if any
+        if (result.levelUps.length > 0) {
+          result.levelUps.forEach(levelUp => {
+            targetSocket.emit('level up', levelUp);
+          });
+        }
+      }
+      
+      // Send confirmation to the admin
+      socket.emit('admin message', { 
+        message: `Awarded ${amount} ${skill} XP to ${targetUsername}. New level: ${result.skills[skill].level}` 
       });
     } catch (error) {
       console.error('Error handling admin:awardXp:', error);

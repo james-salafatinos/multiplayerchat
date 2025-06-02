@@ -11,6 +11,36 @@ import { statements } from '../db/index.js';
 import { getItemById } from '../utils/itemManager.js';
 import { isUserLoggedIn, updateSessionActivity, activeSessions } from '../routes/auth.js';
 
+// XP to level mapping based on Runescape scaling
+const XP_TO_LEVEL = [
+  0, 83, 174, 276, 388, 512, 650, 801, 969, 1154, 1358, 1584, 1833, 2107, 2411, 
+  2746, 3115, 3523, 3973, 4470, 5018, 5624, 6291, 7028, 7842, 8740, 9730, 10824, 
+  12031, 13363, 14833, 16456, 18247, 20224, 22406, 24815, 27473, 30408, 33648, 37224, 
+  41171, 45529, 50339, 55649, 61512, 67983, 75127, 83014, 91721, 101333, 111945, 
+  123660, 136594, 150872, 166636, 184040, 203254, 224466, 247886, 273742, 302288, 
+  333804, 368599, 407015, 449428, 496254, 547953, 605032, 668051, 737627, 814445, 
+  899257, 992895, 1096278, 1210421, 1336443, 1475581, 1629200, 1798808, 1986068, 
+  2192818, 2421087, 2673114, 2951373, 3258594, 3597792, 3972294, 4385776, 4842295, 
+  5346332, 5902831, 6517253, 7195629, 7944614, 8771558, 9684577, 10692629, 11805606, 13034431
+];
+
+/**
+ * Calculate level from XP using Runescape scaling
+ * @param {number} xp - Experience points
+ * @returns {number} - Level (1-99)
+ */
+function calculateLevel(xp) {
+  if (xp <= 0) return 1;
+  
+  for (let level = 1; level < XP_TO_LEVEL.length; level++) {
+    if (xp < XP_TO_LEVEL[level]) {
+      return level;
+    }
+  }
+  
+  return 99; // Max level
+}
+
 // Track active socket connections per user ID
 const activeUserSockets = new Map();
 
@@ -113,6 +143,11 @@ export function initSocketHandlers(io, players, worldItems) {
               y: savedState.position_y, 
               z: savedState.position_z 
             },
+            rotation: {
+              x: savedState.rotation_x || 0,
+              y: savedState.rotation_y || 0,
+              z: savedState.rotation_z || 0
+            },
             color: savedState.color,
             inventory: Array(28).fill(null) // Will be populated from inventory table
           };
@@ -142,6 +177,59 @@ export function initSocketHandlers(io, players, worldItems) {
                 type: itemDef ? itemDef.type : 'generic'
               };
             });
+            
+            // Load player skills from database
+            try {
+              // Initialize skills if needed
+              statements.initPlayerSkills.run(socket.userId);
+              
+              // Get skills data
+              const skillsData = statements.getPlayerSkills.get(socket.userId);
+              
+              if (skillsData) {
+                // Calculate levels from XP
+                newPlayer.skills = {
+                  strength: { 
+                    level: calculateLevel(skillsData.strength_xp), 
+                    xp: skillsData.strength_xp 
+                  },
+                  hitpoints: { 
+                    level: calculateLevel(skillsData.hitpoints_xp), 
+                    xp: skillsData.hitpoints_xp 
+                  },
+                  mining: { 
+                    level: calculateLevel(skillsData.mining_xp), 
+                    xp: skillsData.mining_xp 
+                  },
+                  magic: { 
+                    level: calculateLevel(skillsData.magic_xp), 
+                    xp: skillsData.magic_xp 
+                  },
+                  needsUpdate: true
+                };
+                
+                console.log(`Loaded skills data for user ${socket.username} (ID: ${socket.userId})`);
+              } else {
+                // Default skills
+                newPlayer.skills = {
+                  strength: { level: 1, xp: 0 },
+                  hitpoints: { level: 1, xp: 0 },
+                  mining: { level: 1, xp: 0 },
+                  magic: { level: 1, xp: 0 },
+                  needsUpdate: true
+                };
+              }
+            } catch (error) {
+              console.error(`Error loading skills for user ${socket.userId}:`, error);
+              // Default skills on error
+              newPlayer.skills = {
+                strength: { level: 1, xp: 0 },
+                hitpoints: { level: 1, xp: 0 },
+                mining: { level: 1, xp: 0 },
+                magic: { level: 1, xp: 0 },
+                needsUpdate: true
+              };
+            }
           } catch (error) {
             console.error(`Error loading inventory for user ${socket.userId}:`, error);
           }
@@ -154,6 +242,7 @@ export function initSocketHandlers(io, players, worldItems) {
             userId: socket.userId,
             username: socket.username,
             position: { x: 0, y: 0.5, z: 0 },
+            rotation: { x: 0, y: 0, z: 0 },
             color: color,
             inventory: Array(28).fill(null)
           };
@@ -190,6 +279,7 @@ export function initSocketHandlers(io, players, worldItems) {
         id: socket.id,
         username: `Guest-${socket.id.substring(0, 4)}`,
         position: { x: 0, y: 0.5, z: 0 },
+        rotation: { x: 0, y: 0, z: 0 },
         color: color,
         inventory: Array(28).fill(null),
         isGuest: true

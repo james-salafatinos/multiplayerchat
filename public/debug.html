@@ -404,6 +404,8 @@
                         <th>ID</th>
                         <th>Username</th>
                         <th>Position</th>
+                        <th>Rotation</th>
+                        <th>Skills</th>
                         <th>Details</th>
                     </tr>
                 </thead>
@@ -426,6 +428,26 @@
                     posCell.textContent = `X: ${player.position.x.toFixed(2)}, Y: ${player.position.y.toFixed(2)}, Z: ${player.position.z.toFixed(2)}`;
                 } else {
                     posCell.textContent = 'Unknown';
+                }
+                
+                const rotCell = document.createElement('td');
+                if (player.rotation) {
+                    rotCell.textContent = `X: ${player.rotation.x.toFixed(2)}, Y: ${player.rotation.y.toFixed(2)}, Z: ${player.rotation.z.toFixed(2)}`;
+                } else {
+                    rotCell.textContent = 'Unknown';
+                }
+                
+                const skillsCell = document.createElement('td');
+                if (player.skills) {
+                    const skillsInfo = [];
+                    for (const [skill, data] of Object.entries(player.skills)) {
+                        if (skill !== 'needsUpdate') {
+                            skillsInfo.push(`${skill}: Lvl ${data.level} (${data.xp} XP)`);
+                        }
+                    }
+                    skillsCell.textContent = skillsInfo.join(', ');
+                } else {
+                    skillsCell.textContent = 'No skills data';
                 }
                 
                 const detailsCell = document.createElement('td');
@@ -451,7 +473,7 @@
                         const detailsRow = document.createElement('tr');
                         detailsRow.className = 'details-row';
                         const cell = document.createElement('td');
-                        cell.colSpan = 4;
+                        cell.colSpan = 6;
                         cell.appendChild(detailsDiv);
                         detailsRow.appendChild(cell);
                         row.parentNode.insertBefore(detailsRow, row.nextSibling);
@@ -463,6 +485,8 @@
                 row.appendChild(idCell);
                 row.appendChild(nameCell);
                 row.appendChild(posCell);
+                row.appendChild(rotCell);
+                row.appendChild(skillsCell);
                 row.appendChild(detailsCell);
                 
                 tbody.appendChild(row);

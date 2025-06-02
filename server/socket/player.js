@@ -250,17 +250,25 @@ export function initPlayerHandlers(socket, io, players, worldItems) {
         if (socket.userId && (!player.lastPositionSave || currentTime - player.lastPositionSave > 5000)) {
           // Only save position every 5 seconds to reduce database load but ensure data is fresh
           try {
+            // Initialize rotation values if they don't exist
+            if (!player.rotation) {
+              player.rotation = { x: 0, y: 0, z: 0 };
+            }
+            
             statements.savePlayerState.run(
               socket.userId,
               player.position.x,
               player.position.y,
               player.position.z,
+              player.rotation.x || 0,
+              player.rotation.y || 0,
+              player.rotation.z || 0,
               player.color
             );
             player.lastPositionSave = currentTime;
-            console.log(`Updated position in database for user ${socket.userId}`);
+            console.log(`Updated position and rotation in database for user ${socket.userId}`);
           } catch (error) {
-            console.error(`Error saving position for user ${socket.userId}:`, error);
+            console.error(`Error saving position/rotation for user ${socket.userId}:`, error);
           }
         }
       }

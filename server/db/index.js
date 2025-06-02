@@ -57,6 +57,9 @@ db.exec(`
     position_x REAL NOT NULL,
     position_y REAL NOT NULL,
     position_z REAL NOT NULL,
+    rotation_x REAL DEFAULT 0,
+    rotation_y REAL DEFAULT 0,
+    rotation_z REAL DEFAULT 0,
     color TEXT NOT NULL
   );
   
@@ -175,8 +178,9 @@ const statements = {
   
   // Player state statements
   getPlayerState: db.prepare('SELECT * FROM player_state WHERE user_id = ?'),
-  savePlayerState: db.prepare('INSERT OR REPLACE INTO player_state (user_id, position_x, position_y, position_z, color) VALUES (?, ?, ?, ?, ?)'),
+  savePlayerState: db.prepare('INSERT OR REPLACE INTO player_state (user_id, position_x, position_y, position_z, rotation_x, rotation_y, rotation_z, color) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'),
   updatePlayerColor: db.prepare('UPDATE player_state SET color = ? WHERE user_id = ?'),
+  updatePlayerRotation: db.prepare('UPDATE player_state SET rotation_x = ?, rotation_y = ?, rotation_z = ? WHERE user_id = ?'),
   
   // Player skills statements
   getPlayerSkills: db.prepare('SELECT * FROM player_skills WHERE user_id = ?'),
