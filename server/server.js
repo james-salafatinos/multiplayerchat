@@ -15,6 +15,7 @@ import config from './config/index.js';
 import { db } from './db/index.js';
 import createRouter from './routes/index.js';
 import { initSocketHandlers, activeTrades } from './socket/index.js';
+import { initDebugHandlers } from './socket/debug.js';
 import { initializeWorldItems } from './utils/worldItems.js';
 
 // Load environment variables
@@ -28,6 +29,9 @@ const __dirname = dirname(__filename);
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer);
+
+// Make io available to routes
+app.set('io', io);
 
 // Set up middleware
 app.use(express.static(join(__dirname, '../public')));
@@ -47,13 +51,23 @@ app.use(session({
 // Track connected players and world items
 const players = new Map();
 
-// Create and mount API routes with players access
-const router = createRouter(players);
-app.use('/api', router);
+// Route for debug page
+app.get('/debug', (req, res) => {
+  res.sendFile(join(__dirname, '../public/debug.html'));
+});
+
+// Initialize world items
 const worldItems = initializeWorldItems();
+
+// Create and mount API routes with players and worldItems access
+const router = createRouter(players, worldItems);
+app.use('/api', router);
 
 // Initialize socket handlers
 initSocketHandlers(io, players, worldItems);
+
+// Initialize debug socket handlers
+initDebugHandlers(io, players, worldItems);
 
 // Start the server
 const PORT = process.env.PORT || 3000;

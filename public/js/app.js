@@ -16,6 +16,7 @@ import { SkillsSystem } from './ecs/systems/index.js';
 import { InventoryComponent } from './ecs/components/index.js';
 import { SkillsComponent } from './ecs/components/index.js';
 import { updatePlayerEntityMeshes } from './ecs/playerEntityHelper.js';
+import { initDebugModule } from './debug.js';
 
 
 
@@ -604,6 +605,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Ensure player entities have proper userData for raycasting
         updatePlayerEntityMeshes(world);
     }
+    
+    // Initialize debug module
+    initDebugModule(world, playerEntities, worldItemEntities);
     
     // Start the animation loop
     animate();

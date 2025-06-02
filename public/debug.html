@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MMORPG Debug Dashboard</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --light-bg: #f8f9fa;
+            --dark-bg: #343a40;
+            --card-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--light-bg);
+            color: #333;
+        }
+        
+        .header {
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+        }
+        
+        .card-header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0.75rem 1rem;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .card-body {
+            padding: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .card-footer {
+            background-color: #f8f9fa;
+            padding: 0.75rem 1rem;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        /* Table styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 0.5rem;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+        }
+        
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        /* Logger styles */
+        .logger {
+            font-family: monospace;
+            background-color: #282c34;
+            color: #abb2bf;
+            padding: 1rem;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .log-entry {
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid #3e4451;
+            padding-bottom: 0.5rem;
+        }
+        
+        .log-info { color: #61afef; }
+        .log-warn { color: #e5c07b; }
+        .log-error { color: #e06c75; }
+        .log-debug { color: #98c379; }
+        
+        /* Controls */
+        .controls {
+            margin-bottom: 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        .btn-refresh {
+            background-color: var(--success-color);
+        }
+        
+        .btn-refresh:hover {
+            background-color: #27ae60;
+        }
+        
+        .btn-clear {
+            background-color: var(--danger-color);
+        }
+        
+        .btn-clear:hover {
+            background-color: #c0392b;
+        }
+        
+        /* Entity details */
+        .entity-details {
+            background-color: #f8f9fa;
+            border-left: 3px solid var(--primary-color);
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .component-list {
+            margin-left: 1rem;
+        }
+        
+        .component {
+            margin-bottom: 0.25rem;
+        }
+        
+        .json-view {
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>MMORPG Debug Dashboard</h1>
+    </div>
+    
+    <div class="dashboard">
+        <!-- Entities Card -->
+        <div class="card">
+            <div class="card-header">
+                <span>Entities</span>
+                <span id="entity-count">0</span>
+            </div>
+            <div class="card-body" id="entities-container">
+                <div class="controls">
+                    <button class="btn-refresh" onclick="refreshEntities()">Refresh</button>
+                    <button onclick="expandAllEntities()">Expand All</button>
+                    <button onclick="collapseAllEntities()">Collapse All</button>
+                </div>
+                <div id="entities-list">Loading entities...</div>
+            </div>
+        </div>
+        
+        <!-- Players Card -->
+        <div class="card">
+            <div class="card-header">
+                <span>Players</span>
+                <span id="player-count">0</span>
+            </div>
+            <div class="card-body" id="players-container">
+                <div class="controls">
+                    <button class="btn-refresh" onclick="refreshPlayers()">Refresh</button>
+                </div>
+                <div id="players-list">Loading players...</div>
+            </div>
+        </div>
+        
+        <!-- World Items Card -->
+        <div class="card">
+            <div class="card-header">
+                <span>World Items</span>
+                <span id="item-count">0</span>
+            </div>
+            <div class="card-body">
+                <div class="controls">
+                    <button class="btn-refresh" onclick="refreshItems()">Refresh</button>
+                </div>
+                <div id="items-list">Loading items...</div>
+            </div>
+        </div>
+        
+        <!-- Debug Logger Card -->
+        <div class="card">
+            <div class="card-header">
+                <span>Debug Logger</span>
+                <button class="btn-clear" onclick="clearLogs()">Clear</button>
+            </div>
+            <div class="card-body">
+                <div class="logger" id="logger">
+                    <div class="log-entry log-info">[INFO] Debug logger initialized</div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="controls">
+                    <button onclick="addLogEntry('info')">Log Info</button>
+                    <button onclick="addLogEntry('debug')">Log Debug</button>
+                    <button onclick="addLogEntry('warn')">Log Warning</button>
+                    <button onclick="addLogEntry('error')">Log Error</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Utility functions
+        function formatTime() {
+            const now = new Date();
+            return now.toLocaleTimeString();
+        }
+        
+        function addLogEntry(type, message) {
+            const logger = document.getElementById('logger');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            
+            if (!message) {
+                // Demo messages if no message provided
+                switch(type) {
+                    case 'info':
+                        message = 'Information log entry';
+                        break;
+                    case 'debug':
+                        message = 'Debug data received';
+                        break;
+                    case 'warn':
+                        message = 'Warning: approaching memory limit';
+                        break;
+                    case 'error':
+                        message = 'Error: failed to process entity';
+                        break;
+                }
+            }
+            
+            entry.textContent = `[${type.toUpperCase()}][${formatTime()}] ${message}`;
+            logger.appendChild(entry);
+            logger.scrollTop = logger.scrollHeight; // Auto-scroll to bottom
+        }
+        
+        function clearLogs() {
+            const logger = document.getElementById('logger');
+            logger.innerHTML = '';
+            addLogEntry('info', 'Logs cleared');
+        }
+        
+        function formatJson(json) {
+            return JSON.stringify(json, null, 2);
+        }
+        
+        // Data fetching functions
+        async function fetchDebugData(endpoint) {
+            try {
+                const response = await fetch(`/api/debug/${endpoint}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                addLogEntry('debug', `Fetched ${endpoint} data successfully`);
+                return data;
+            } catch (error) {
+                addLogEntry('error', `Failed to fetch ${endpoint}: ${error.message}`);
+                return null;
+            }
+        }
+        
+        async function refreshEntities() {
+            const container = document.getElementById('entities-list');
+            container.innerHTML = 'Loading entities...';
+            
+            const data = await fetchDebugData('entities');
+            if (!data) {
+                container.innerHTML = 'Failed to load entities';
+                return;
+            }
+            
+            document.getElementById('entity-count').textContent = data.length;
+            
+            if (data.length === 0) {
+                container.innerHTML = 'No entities found';
+                return;
+            }
+            
+            container.innerHTML = '';
+            data.forEach(entity => {
+                const entityElement = document.createElement('div');
+                entityElement.className = 'entity-details';
+                
+                const header = document.createElement('div');
+                header.innerHTML = `<strong>Entity ID: ${entity.id}</strong>`;
+                header.style.cursor = 'pointer';
+                
+                const components = document.createElement('div');
+                components.className = 'component-list';
+                components.style.display = 'none'; // Initially collapsed
+                
+                // Add components
+                for (const [componentName, componentData] of Object.entries(entity.components)) {
+                    const component = document.createElement('div');
+                    component.className = 'component';
+                    component.innerHTML = `<strong>${componentName}:</strong> <span class="json-view">${formatJson(componentData)}</span>`;
+                    components.appendChild(component);
+                }
+                
+                // Toggle visibility on click
+                header.addEventListener('click', () => {
+                    components.style.display = components.style.display === 'none' ? 'block' : 'none';
+                });
+                
+                entityElement.appendChild(header);
+                entityElement.appendChild(components);
+                container.appendChild(entityElement);
+            });
+        }
+        
+        function expandAllEntities() {
+            document.querySelectorAll('.component-list').forEach(el => {
+                el.style.display = 'block';
+            });
+        }
+        
+        function collapseAllEntities() {
+            document.querySelectorAll('.component-list').forEach(el => {
+                el.style.display = 'none';
+            });
+        }
+        
+        async function refreshPlayers() {
+            const container = document.getElementById('players-list');
+            container.innerHTML = 'Loading players...';
+            
+            const data = await fetchDebugData('players');
+            if (!data) {
+                container.innerHTML = 'Failed to load players';
+                return;
+            }
+            
+            document.getElementById('player-count').textContent = data.length;
+            
+            if (data.length === 0) {
+                container.innerHTML = 'No players connected';
+                return;
+            }
+            
+            container.innerHTML = '';
+            const table = document.createElement('table');
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Position</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            `;
+            
+            const tbody = table.querySelector('tbody');
+            
+            data.forEach(player => {
+                const row = document.createElement('tr');
+                
+                const idCell = document.createElement('td');
+                idCell.textContent = player.id;
+                
+                const nameCell = document.createElement('td');
+                nameCell.textContent = player.username || 'Anonymous';
+                
+                const posCell = document.createElement('td');
+                if (player.position) {
+                    posCell.textContent = `X: ${player.position.x.toFixed(2)}, Y: ${player.position.y.toFixed(2)}, Z: ${player.position.z.toFixed(2)}`;
+                } else {
+                    posCell.textContent = 'Unknown';
+                }
+                
+                const detailsCell = document.createElement('td');
+                const detailsBtn = document.createElement('button');
+                detailsBtn.textContent = 'View Details';
+                detailsBtn.onclick = () => {
+                    // Create modal or expand row with details
+                    const detailsDiv = document.createElement('div');
+                    detailsDiv.className = 'player-details';
+                    detailsDiv.innerHTML = `
+                        <h4>Player Details</h4>
+                        <div><strong>Inventory:</strong> <pre>${formatJson(player.inventory || {})}</pre></div>
+                        <div><strong>Skills:</strong> <pre>${formatJson(player.skills || {})}</pre></div>
+                        <div><strong>Rotation:</strong> <pre>${formatJson(player.rotation || {})}</pre></div>
+                    `;
+                    
+                    // Check if details are already shown
+                    const existingDetails = row.nextElementSibling;
+                    if (existingDetails && existingDetails.classList.contains('details-row')) {
+                        existingDetails.remove();
+                        detailsBtn.textContent = 'View Details';
+                    } else {
+                        const detailsRow = document.createElement('tr');
+                        detailsRow.className = 'details-row';
+                        const cell = document.createElement('td');
+                        cell.colSpan = 4;
+                        cell.appendChild(detailsDiv);
+                        detailsRow.appendChild(cell);
+                        row.parentNode.insertBefore(detailsRow, row.nextSibling);
+                        detailsBtn.textContent = 'Hide Details';
+                    }
+                };
+                detailsCell.appendChild(detailsBtn);
+                
+                row.appendChild(idCell);
+                row.appendChild(nameCell);
+                row.appendChild(posCell);
+                row.appendChild(detailsCell);
+                
+                tbody.appendChild(row);
+            });
+            
+            container.appendChild(table);
+        }
+        
+        async function refreshItems() {
+            const container = document.getElementById('items-list');
+            container.innerHTML = 'Loading world items...';
+            
+            const data = await fetchDebugData('items');
+            if (!data) {
+                container.innerHTML = 'Failed to load world items';
+                return;
+            }
+            
+            document.getElementById('item-count').textContent = data.length;
+            
+            if (data.length === 0) {
+                container.innerHTML = 'No items in world';
+                return;
+            }
+            
+            container.innerHTML = '';
+            const table = document.createElement('table');
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Type</th>
+                        <th>Position</th>
+                        <th>Properties</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            `;
+            
+            const tbody = table.querySelector('tbody');
+            
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                
+                const idCell = document.createElement('td');
+                idCell.textContent = item.id;
+                
+                const typeCell = document.createElement('td');
+                typeCell.textContent = item.type || 'Unknown';
+                
+                const posCell = document.createElement('td');
+                if (item.position) {
+                    posCell.textContent = `X: ${item.position.x.toFixed(2)}, Y: ${item.position.y.toFixed(2)}, Z: ${item.position.z.toFixed(2)}`;
+                } else {
+                    posCell.textContent = 'Unknown';
+                }
+                
+                const propsCell = document.createElement('td');
+                const propsBtn = document.createElement('button');
+                propsBtn.textContent = 'View Properties';
+                propsBtn.onclick = () => {
+                    // Create modal or expand row with properties
+                    const propsDiv = document.createElement('div');
+                    propsDiv.className = 'item-properties';
+                    propsDiv.innerHTML = `<pre>${formatJson(item.properties || {})}</pre>`;
+                    
+                    // Check if properties are already shown
+                    const existingProps = row.nextElementSibling;
+                    if (existingProps && existingProps.classList.contains('props-row')) {
+                        existingProps.remove();
+                        propsBtn.textContent = 'View Properties';
+                    } else {
+                        const propsRow = document.createElement('tr');
+                        propsRow.className = 'props-row';
+                        const cell = document.createElement('td');
+                        cell.colSpan = 4;
+                        cell.appendChild(propsDiv);
+                        propsRow.appendChild(cell);
+                        row.parentNode.insertBefore(propsRow, row.nextSibling);
+                        propsBtn.textContent = 'Hide Properties';
+                    }
+                };
+                propsCell.appendChild(propsBtn);
+                
+                row.appendChild(idCell);
+                row.appendChild(typeCell);
+                row.appendChild(posCell);
+                row.appendChild(propsCell);
+                
+                tbody.appendChild(row);
+            });
+            
+            container.appendChild(table);
+        }
+        
+        // Initialize the dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshEntities();
+            refreshPlayers();
+            refreshItems();
+            
+            // Set up auto-refresh every 5 seconds
+            // Uncomment if you want auto-refresh
+            /*
+            setInterval(() => {
+                refreshEntities();
+                refreshPlayers();
+                refreshItems();
+            }, 5000);
+            */
+        });
+    </script>
+</body>
+</html>
