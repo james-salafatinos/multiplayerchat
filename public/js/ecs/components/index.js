@@ -6,6 +6,7 @@ export { RotationComponent } from './rotationComponent.js';
 export { LightComponent } from './lightComponent.js';
 
 export { PlayerComponent } from './playerComponent.js';
+export { CharacterControllerComponent } from './characterControllerComponent.js';
 export { MovementComponent } from './movementComponent.js';
 export { ChatBubbleComponent } from './chatBubbleComponent.js';
 export { TransformComponent } from './transformComponent.js';

@@ -9,11 +9,11 @@ import { World } from './ecs/core/index.js';
 import { createCubeEntity, createGroundEntity, createPlayerEntity } from './ecs/entities/index.js';
 import { createBasicItemEntity } from './ecs/entities/index.js';
 
-import { RenderSystem, RotationSystem, MovementSystem } from './ecs/systems/index.js';
+import { RenderSystem, RotationSystem, MovementSystem, CharacterSystem } from './ecs/systems/index.js'; // Added CharacterSystem
 import { CameraSystem, ChatBubbleSystem, ContextMenuSystem  } from './ecs/systems/index.js';
 import { InventorySystem } from './ecs/systems/index.js';
 import { SkillsSystem } from './ecs/systems/index.js';
-import { InventoryComponent } from './ecs/components/index.js';
+import { InventoryComponent, CharacterControllerComponent } from './ecs/components/index.js'; // Added CharacterControllerComponent
 import { SkillsComponent } from './ecs/components/index.js';
 import { updatePlayerEntityMeshes } from './ecs/playerEntityHelper.js';
 import { initDebugModule } from './debug.js';
@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const { playerId } = event.detail;
         if (!playerEntities.has(playerId)) {
             console.log(`[App.js 'local-player-id-assigned'] Preemptively creating local player entity: ${playerId}`);
-            const localPlayerEntity = createPlayerEntity(world, {
+            const localPlayerEntity = createPlayerEntity(world, scene, {
                 playerId: playerId,
                 username: 'LocalPlayer', // Temporary username, will be updated
                 isLocalPlayer: true,
@@ -129,6 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
     world.registerSystem(new CameraSystem());
     world.registerSystem(new ContextMenuSystem(socket));
     world.registerSystem(new SkillsSystem(socket));
+    world.registerSystem(new CharacterSystem()); // Register CharacterSystem
     
     // Set up initial camera position for isometric view
     camera.position.set(15, 10, 15); // Position for 45-degree isometric view
@@ -162,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else {
                 console.log(`[App.js 'players-list'] Creating new player entity for ${player.id} (isLocal: ${isLocal}).`);
-                playerEntity = createPlayerEntity(world, {
+                playerEntity = createPlayerEntity(world, scene, {
                     playerId: player.id,
                     username: player.username,
                     isLocalPlayer: isLocal,

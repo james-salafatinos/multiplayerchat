@@ -17,3 +17,5 @@ export { InventorySystem } from './InventorySystem.js';
 
 //Skills System
 export { SkillsSystem } from './SkillsSystem.js';
+
+export { CharacterSystem } from './characterSystem.js';
