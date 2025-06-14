@@ -21,20 +21,18 @@ export class BasicCharacterController {
 
   _Init(params) {
     this._params = params;
-    this._decceleration = new THREE.Vector3(-0.0005, -0.0001, -5.0); // Default decceleration
-    this._acceleration = new THREE.Vector3(1, 0.25, 50.0); // Default acceleration, adjusted Z for potentially smaller scale
-    this._velocity = new THREE.Vector3(0, 0, 0);
-    this._position = new THREE.Vector3();
+    // Removed _decceleration, _acceleration, _velocity, _position as movement is now ECS driven
 
     this._animations = {};
-    this._input = new BasicCharacterControllerInput();
+    this._input = new BasicCharacterControllerInput(); // Input now primarily carries state like isMoving
     this._stateMachine = new CharacterFSM(
       new BasicCharacterControllerProxy(this._animations)
     );
 
     this._target = null; // Will hold the character model
     this._mixer = null; // Animation mixer
-    this._playerCollider = new THREE.Sphere(new THREE.Vector3(0, 0.5, 0), 0.5); // Default collider, adjust Y and radius as needed
+    // Collider might still be useful for physics interactions, keep for now
+    this._playerCollider = new THREE.Sphere(new THREE.Vector3(0, 0.5, 0), 0.5); 
 
     this._LoadModels();
   }
@@ -121,89 +119,43 @@ export class BasicCharacterController {
     return this._target.quaternion.clone();
   }
 
-  Update(timeInSeconds) {
-    if (!this._target || !this._mixer) {
+  Update(deltaTime, movementComponent, transformComponent) {
+    if (!this._target || !this._mixer || !movementComponent || !transformComponent) {
       return;
     }
 
-    this._stateMachine.Update(timeInSeconds, this._input);
+    // ADDED LOGS
+    console.log("-----------------------------------------");
+    console.log(`[CharacterController UPDATE] Timestamp: ${performance.now().toFixed(2)}`);
+    console.log(`  Target Visible: ${this._target.visible}`);
+    console.log(`  Target Position: X=${this._target.position.x.toFixed(2)}, Y=${this._target.position.y.toFixed(2)}, Z=${this._target.position.z.toFixed(2)}`);
+    console.log(`  Target Quaternion: X=${this._target.quaternion.x.toFixed(2)}, Y=${this._target.quaternion.y.toFixed(2)}, Z=${this._target.quaternion.z.toFixed(2)}, W=${this._target.quaternion.w.toFixed(2)}`);
+    console.log(`  MovementComponent.isMoving: ${movementComponent.isMoving}`);
+    console.log(`  TransformComponent Position: X=${transformComponent.position.x.toFixed(2)}, Y=${transformComponent.position.y.toFixed(2)}, Z=${transformComponent.position.z.toFixed(2)}`);
+    console.log(`  TransformComponent Euler Rotation: X=${transformComponent.rotation.x.toFixed(2)}, Y=${transformComponent.rotation.y.toFixed(2)}, Z=${transformComponent.rotation.z.toFixed(2)}`);
+    if (this._stateMachine.currentState) {
+        console.log(`  FSM State: ${this._stateMachine.currentState.Name}`);
+    } else {
+        console.log("  FSM State: undefined/none");
+    }
+    // END OF ADDED LOGS
 
-    const velocity = this._velocity;
-    const frameDecceleration = new THREE.Vector3(
-      velocity.x * this._decceleration.x,
-      velocity.y * this._decceleration.y,
-      velocity.z * this._decceleration.z
-    );
-    frameDecceleration.multiplyScalar(timeInSeconds);
-    frameDecceleration.z =
-      Math.sign(frameDecceleration.z) *
-      Math.min(Math.abs(frameDecceleration.z), Math.abs(velocity.z));
+    this._input.isMoving = movementComponent.isMoving;
+    // this._input.isRunning = movementComponent.isRunning; 
 
-    velocity.add(frameDecceleration);
+    this._stateMachine.Update(deltaTime, this._input);
 
-    const controlObject = this._target;
-    const _Q = new THREE.Quaternion();
-    const _A = new THREE.Vector3();
-    const _R = controlObject.quaternion.clone();
+    this._target.position.copy(transformComponent.position);
+    this._target.quaternion.setFromEuler(transformComponent.rotation);
 
-    const acc = this._acceleration.clone();
-    const runSpeedMultiplier = this._params.runSpeedMultiplier || 2.0;
-    const rotationSpeed = this._params.rotationSpeed || 4.0;
-
-    if (this._input._keys.shift) {
-      acc.multiplyScalar(runSpeedMultiplier);
+    if (this._playerCollider) {
+        this._playerCollider.center.copy(this._target.position);
+        // Adjust Y if needed, e.g., this._playerCollider.center.y += this._playerCollider.radius;
     }
 
-    // Movement
-    if (this._input._keys.forward) {
-      velocity.z += acc.z * timeInSeconds;
-    }
-    if (this._input._keys.backward) {
-      velocity.z -= acc.z * timeInSeconds;
-    }
-
-    // Rotation
-    if (this._input._keys.left) {
-      _A.set(0, 1, 0);
-      _Q.setFromAxisAngle(
-        _A,
-        rotationSpeed * Math.PI * timeInSeconds * this._acceleration.y // Using _acceleration.y as a base for rotation sensitivity
-      );
-      _R.multiply(_Q);
-    }
-    if (this._input._keys.right) {
-      _A.set(0, 1, 0);
-      _Q.setFromAxisAngle(
-        _A,
-        rotationSpeed * -Math.PI * timeInSeconds * this._acceleration.y
-      );
-      _R.multiply(_Q);
-    }
-
-    controlObject.quaternion.copy(_R);
-
-    const oldPosition = new THREE.Vector3();
-    oldPosition.copy(controlObject.position);
-
-    const forward = new THREE.Vector3(0, 0, 1);
-    forward.applyQuaternion(controlObject.quaternion);
-    forward.normalize();
-
-    const sideways = new THREE.Vector3(1, 0, 0); // Not used for movement in this version, but can be added
-    sideways.applyQuaternion(controlObject.quaternion);
-    sideways.normalize();
-
-    // Apply forward/backward movement
-    const moveDelta = forward.multiplyScalar(velocity.z * timeInSeconds);
-    controlObject.position.add(moveDelta);
-
-    this._position.copy(controlObject.position);
-    this._playerCollider.center.copy(controlObject.position).add(new THREE.Vector3(0, this._playerCollider.radius, 0)); // Update collider position
-
-    this._mixer.update(timeInSeconds);
+    this._mixer.update(deltaTime);
   }
   
-  // Method to allow external positioning (e.g., for initial spawn)
   SetPosition(x, y, z) {
     if (this._target) {
       this._target.position.set(x, y, z);

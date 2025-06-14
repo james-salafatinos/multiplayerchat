@@ -91,9 +91,10 @@ export class IdleState extends State {
   Exit() {}
 
   Update(_, input) {
-    if (input._keys.forward || input._keys.backward || input._keys.left || input._keys.right) {
+    // Transition to 'walk' if the character is moving (based on MovementComponent)
+    if (input.isMoving) {
       this._parent.SetState('walk');
-    } else if (input._keys.space) {
+    } else if (input._keys && input._keys.space) { // Keep dance on space for now, ensure _keys exists if BasicCharacterControllerInput is very minimal
       this._parent.SetState('dance');
     }
   }
@@ -135,14 +136,14 @@ export class WalkState extends State {
   Exit() {}
 
   Update(timeElapsed, input) {
-    if (input._keys.forward || input._keys.backward || input._keys.left || input._keys.right) {
-      if (input._keys.shift) {
-        this._parent.SetState('run');
-      }
+    // If no longer moving, transition to 'idle'
+    if (!input.isMoving) {
+      this._parent.SetState('idle');
       return;
     }
-
-    this._parent.SetState('idle');
+    // If still moving, remain in 'walk' state.
+    // Run state transition removed for now, as point-and-click typically doesn't use a shift modifier.
+    // Could be re-added if MovementComponent includes an 'isRunning' flag or similar.
   }
 }
 
@@ -182,14 +183,13 @@ export class RunState extends State {
   Exit() {}
 
   Update(timeElapsed, input) {
-    if (input._keys.forward || input._keys.backward || input._keys.left || input._keys.right) {
-      if (!input._keys.shift) {
-        this._parent.SetState('walk');
-      }
+    // If no longer moving, transition to 'idle'
+    if (!input.isMoving) {
+      this._parent.SetState('idle');
       return;
     }
-
-    this._parent.SetState('idle');
+    // If still moving, remain in 'run' state (assuming it was entered through other means).
+    // No transition to 'walk' based on shift key here, as that logic was removed from WalkState.
   }
 }
 
