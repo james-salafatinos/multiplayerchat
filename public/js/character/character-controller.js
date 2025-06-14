@@ -124,24 +124,16 @@ export class BasicCharacterController {
       return;
     }
 
-    // ADDED LOGS
-    console.log("-----------------------------------------");
-    console.log(`[CharacterController UPDATE] Timestamp: ${performance.now().toFixed(2)}`);
-    console.log(`  Target Visible: ${this._target.visible}`);
-    console.log(`  Target Position: X=${this._target.position.x.toFixed(2)}, Y=${this._target.position.y.toFixed(2)}, Z=${this._target.position.z.toFixed(2)}`);
-    console.log(`  Target Quaternion: X=${this._target.quaternion.x.toFixed(2)}, Y=${this._target.quaternion.y.toFixed(2)}, Z=${this._target.quaternion.z.toFixed(2)}, W=${this._target.quaternion.w.toFixed(2)}`);
-    console.log(`  MovementComponent.isMoving: ${movementComponent.isMoving}`);
-    console.log(`  TransformComponent Position: X=${transformComponent.position.x.toFixed(2)}, Y=${transformComponent.position.y.toFixed(2)}, Z=${transformComponent.position.z.toFixed(2)}`);
-    console.log(`  TransformComponent Euler Rotation: X=${transformComponent.rotation.x.toFixed(2)}, Y=${transformComponent.rotation.y.toFixed(2)}, Z=${transformComponent.rotation.z.toFixed(2)}`);
-    if (this._stateMachine.currentState) {
-        console.log(`  FSM State: ${this._stateMachine.currentState.Name}`);
-    } else {
-        console.log("  FSM State: undefined/none");
-    }
-    // END OF ADDED LOGS
-
+    // Only log for debugging when movement state changes or for remote players
+    const wasMoving = this._input.isMoving;
     this._input.isMoving = movementComponent.isMoving;
-    // this._input.isRunning = movementComponent.isRunning; 
+    
+    if (wasMoving !== this._input.isMoving || !this._params.isLocalPlayer) {
+      console.log(`[CharacterController] Player ${this._params.isLocalPlayer ? 'LOCAL' : 'REMOTE'} movement state: ${this._input.isMoving}`);
+      if (this._stateMachine.currentState) {
+        console.log(`[CharacterController] Current animation state: ${this._stateMachine.currentState.Name}`);
+      }
+    }
 
     this._stateMachine.Update(deltaTime, this._input);
 

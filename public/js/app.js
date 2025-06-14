@@ -247,13 +247,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else {
             console.log(`[App.js 'player-joined'] Creating new player entity for ${player.id} (isLocal: ${isLocal}).`);
-            playerEntity = createPlayerEntity(world, {
+            playerEntity = createPlayerEntity(world, scene, {
                 playerId: player.id,
                 username: player.username,
                 isLocalPlayer: isLocal,
                 color: player.color || '#3498db', // Use server color or default
                 position: player.position
             });
+            
+            console.log(`[App.js 'player-joined'] Created entity for ${player.id}:`, playerEntity);
+            console.log(`[App.js 'player-joined'] Entity has CharacterControllerComponent:`, !!playerEntity.getComponent('CharacterControllerComponent'));
+            console.log(`[App.js 'player-joined'] Entity has MovementComponent:`, !!playerEntity.getComponent('MovementComponent'));
+            console.log(`[App.js 'player-joined'] Entity has TransformComponent:`, !!playerEntity.getComponent('TransformComponent'));
             
             // Initialize inventory component
             if (isLocal && window.pendingInventory) {
@@ -269,6 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
             playerEntities.set(player.id, playerEntity);
             const checkComp = playerEntity.getComponent(InventoryComponent);
             console.log(`[App.js 'player-joined'] Added InventoryComponent to new player ${player.id}. Immediately retrieved: ${checkComp ? 'Found' : 'NOT Found'}`);
+            console.log(`[App.js 'player-joined'] Total entities in world: ${world.entities.length}`);
         }
 
         // If this is the local player and color is provided, update the color picker and mesh

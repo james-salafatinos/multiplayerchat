@@ -11,18 +11,22 @@ export class CharacterSystem {
       // console.log('[CharacterSystem] No entities found with required components.');
       return;
     }
-    // console.log(`[CharacterSystem] Found ${entities.length} entities with required components.`);
+    console.log(`[CharacterSystem] Found ${entities.length} entities with required components.`);
 
     for (const entity of entities) {
-      // console.log(`[CharacterSystem] Processing entity ID: ${entity.id}`);
       const characterControllerComponent = entity.getComponent('CharacterControllerComponent');
       const movementComponent = entity.getComponent('MovementComponent');
       const transformComponent = entity.getComponent('TransformComponent');
+      const playerComponent = entity.getComponent('PlayerComponent');
 
       if (characterControllerComponent && characterControllerComponent.controller && movementComponent && transformComponent) {
-        // console.log(`[CharacterSystem] Updating controller for entity ID: ${entity.id}`);
-        // console.log(`[CharacterSystem]   isMoving: ${movementComponent.isMoving}, targetPos:`, movementComponent.targetPosition);
-        // console.log(`[CharacterSystem]   currentPos:`, transformComponent.position, `currentRot:`, transformComponent.rotation);
+        const playerId = playerComponent ? playerComponent.playerId : 'unknown';
+        const isLocal = playerComponent ? playerComponent.isLocalPlayer : false;
+        
+        console.log(`[CharacterSystem] Updating controller for entity ${entity.id} (Player: ${playerId}, Local: ${isLocal})`);
+        console.log(`[CharacterSystem]   isMoving: ${movementComponent.isMoving}, targetPos:`, movementComponent.targetPosition);
+        console.log(`[CharacterSystem]   currentPos:`, transformComponent.position, `currentRot:`, transformComponent.rotation);
+        
         characterControllerComponent.controller.Update(deltaTime, movementComponent, transformComponent);
       } else {
         console.warn(`[CharacterSystem] Entity ID: ${entity.id} missing one or more required components/controller for update.`);

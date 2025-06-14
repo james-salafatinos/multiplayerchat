@@ -312,9 +312,10 @@ export class MovementSystem extends System {
      * @param {Object} data - The position data
      */
     handleRemotePosition(data) {
-        console.log('Handling remote position update:', data);
+        console.log('[MovementSystem] Handling remote position update:', data);
         
         // Find player entity with matching ID
+        let foundPlayer = false;
         for (const entity of this.world.entities) {
             if (entity.hasComponent('PlayerComponent') && 
                 entity.hasComponent('TransformComponent') &&
@@ -327,14 +328,21 @@ export class MovementSystem extends System {
                 
                 // Update remote player if ID matches
                 if (playerComponent.playerId === data.playerId) {
-                    console.log('Found matching remote player:', playerComponent.playerId);
+                    console.log('[MovementSystem] Found matching remote player:', playerComponent.playerId);
+                    foundPlayer = true;
                     
                     const movementComponent = entity.getComponent('MovementComponent');
                     const transformComponent = entity.getComponent('TransformComponent');
                     
+                    console.log('[MovementSystem] Remote player components:', {
+                        hasMovement: !!movementComponent,
+                        hasTransform: !!transformComponent,
+                        hasCharacterController: !!entity.getComponent('CharacterControllerComponent')
+                    });
+                    
                     // Ensure position is a Vector3 object
                     if (!(transformComponent.position instanceof THREE.Vector3)) {
-                        console.log('Converting remote position to Vector3');
+                        console.log('[MovementSystem] Converting remote position to Vector3');
                         transformComponent.position = new THREE.Vector3(
                             transformComponent.position.x || 0,
                             transformComponent.position.y || 0,
@@ -344,7 +352,7 @@ export class MovementSystem extends System {
                     
                     // Ensure targetPosition is a Vector3 object
                     if (!(movementComponent.targetPosition instanceof THREE.Vector3)) {
-                        console.log('Converting remote targetPosition to Vector3');
+                        console.log('[MovementSystem] Converting remote targetPosition to Vector3');
                         movementComponent.targetPosition = new THREE.Vector3(
                             movementComponent.targetPosition.x || 0,
                             movementComponent.targetPosition.y || 0,
@@ -354,18 +362,19 @@ export class MovementSystem extends System {
                     
                     // If target position is provided, update movement target
                     if (data.targetPosition) {
-                        console.log('Setting remote target position:', data.targetPosition);
+                        console.log('[MovementSystem] Setting remote target position:', data.targetPosition);
                         movementComponent.targetPosition.set(
                             data.targetPosition.x || 0,
                             data.targetPosition.y || 0,
                             data.targetPosition.z || 0
                         );
                         movementComponent.isMoving = true;
+                        console.log('[MovementSystem] Set remote player isMoving = true');
                     }
                     
                     // If current position is provided, update position directly
                     if (data.position) {
-                        console.log('Setting remote position directly:', data.position);
+                        console.log('[MovementSystem] Setting remote position directly:', data.position);
                         transformComponent.position.set(
                             data.position.x || 0,
                             data.position.y || 0,
@@ -375,11 +384,24 @@ export class MovementSystem extends System {
                     
                     // If rotation is provided, update rotation
                     if (data.rotation) {
-                        console.log('Setting remote rotation:', data.rotation);
+                        console.log('[MovementSystem] Setting remote rotation:', data.rotation);
                         transformComponent.rotation.y = data.rotation.y || 0;
                     }
+                    
+                    break; // Found the player, no need to continue searching
                 }
             }
+        }
+        
+        if (!foundPlayer) {
+            console.warn('[MovementSystem] No matching remote player found for ID:', data.playerId);
+            console.log('[MovementSystem] Available players:', this.world.entities
+                .filter(e => e.hasComponent('PlayerComponent'))
+                .map(e => ({
+                    id: e.getComponent('PlayerComponent').playerId,
+                    isLocal: e.getComponent('PlayerComponent').isLocalPlayer
+                }))
+            );
         }
     }
     
