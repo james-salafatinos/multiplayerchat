@@ -87,24 +87,24 @@ export function createItemEntity(world, options = {}) {
             modelPath = modelPath.replace('.gltf', '.glb');
         }
         
-        console.log(`Attempting to load 3D model from: ${modelPath}`);
+        // console.log(`Attempting to load 3D model from: ${modelPath}`);
         
         // Check if file exists by making a HEAD request
         fetch(modelPath, { method: 'HEAD' })
             .then(response => {
                 if (response.ok) {
-                    console.log(`Model file exists at path: ${modelPath}`);
+                    // console.log(`Model file exists at path: ${modelPath}`);
                 } else {
-                    console.error(`Model file NOT found at path: ${modelPath} (Status: ${response.status})`);
+                    // console.error(`Model file NOT found at path: ${modelPath} (Status: ${response.status})`);
                     // Try alternative path if file not found
                     const altPath = modelPath.replace('.glb', '.gltf');
-                    console.log(`Trying alternative path: ${altPath}`);
+                    // console.log(`Trying alternative path: ${altPath}`);
                     return fetch(altPath, { method: 'HEAD' });
                 }
             })
             .then(response => {
                 if (response && response.ok) {
-                    console.log(`Model file found at alternative path: ${modelPath.replace('.glb', '.gltf')}`);
+                    // console.log(`Model file found at alternative path: ${modelPath.replace('.glb', '.gltf')}`);
                     // Update the path for loading
                     modelPath = modelPath.replace('.glb', '.gltf');
                 }
@@ -115,12 +115,12 @@ export function createItemEntity(world, options = {}) {
         
         // Add a small delay to ensure fetch completes before loading
         setTimeout(() => {
-            console.log(`Loading model from: ${modelPath}`);
+            // console.log(`Loading model from: ${modelPath}`);
             gltfLoader.load(
                 modelPath,
                 (gltf) => {
                     // Success callback
-                    console.log(`Loaded model for item ${config.name} from ${config.gltfPath}`);
+                    // console.log(`Loaded model for item ${config.name} from ${config.gltfPath}`);
                     
                     // Clear any existing meshes
                     while (itemGroup.children.length > 0) {
@@ -173,7 +173,7 @@ export function createItemEntity(world, options = {}) {
                 return;
             }
             const itemUuid = itemComp.uuid;
-            console.log(`InteractableComponent: onInteract called for item UUID: ${itemUuid}. Emitting 'inventory update' (pickup) to server.`);
+            // console.log(`InteractableComponent: onInteract called for item UUID: ${itemUuid}. Emitting 'inventory update' (pickup) to server.`);
             
             const socketInstance = getSocket(); // Call getSocket() here
             // Ensure socket is available

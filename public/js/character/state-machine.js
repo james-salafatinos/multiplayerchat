@@ -21,6 +21,7 @@ export class FiniteStateMachine {
       prevState.Exit();
     }
 
+    console.log(`[NET-ANIM-DBG] FiniteStateMachine.SetState: Attempting to set state to '${name}'. Prev state: ${prevState ? prevState.Name : 'null'}. Entity: ${this._proxy?._target?.uuid || 'N/A'}`);
     const state = new this._states[name](this);
 
     this._currentState = state;
@@ -74,15 +75,27 @@ export class IdleState extends State {
   }
 
   Enter(prevState) {
+    // Check if animations are loaded before trying to access them
+    if (!this._parent._proxy._animations['idle'] || !this._parent._proxy._animations['idle'].action) {
+      console.warn('[IdleState] Idle animation not loaded yet, deferring state entry');
+      return;
+    }
+    
     const idleAction = this._parent._proxy._animations['idle'].action;
     if (prevState) {
-      const prevAction = this._parent._proxy._animations[prevState.Name].action;
-      idleAction.time = 0.0;
-      idleAction.enabled = true;
-      idleAction.setEffectiveTimeScale(1.0);
-      idleAction.setEffectiveWeight(1.0);
-      idleAction.crossFadeFrom(prevAction, 0.5, true);
-      idleAction.play();
+      // Check if previous state animation exists
+      if (this._parent._proxy._animations[prevState.Name] && this._parent._proxy._animations[prevState.Name].action) {
+        const prevAction = this._parent._proxy._animations[prevState.Name].action;
+        idleAction.time = 0.0;
+        idleAction.enabled = true;
+        idleAction.setEffectiveTimeScale(1.0);
+        idleAction.setEffectiveWeight(1.0);
+        idleAction.crossFadeFrom(prevAction, 0.5, true);
+        idleAction.play();
+      } else {
+        // Previous state animation not available, just play idle
+        idleAction.play();
+      }
     } else {
       idleAction.play();
     }
@@ -93,6 +106,8 @@ export class IdleState extends State {
   Update(_, input) {
     // Transition to 'walk' if the character is moving (based on MovementComponent)
     if (input.isMoving) {
+      console.log(`[NET-ANIM-DBG] IdleState.Update: input.isMoving is TRUE. Transitioning to 'walk'. Entity: ${this._parent._proxy?._target?.uuid || 'N/A'}`);
+      console.log(`[IdleState] input.isMoving is true for player. Attempting to set state to 'walk'. Entity: ${this._parent._proxy._target?.uuid}`);
       this._parent.SetState('walk');
     } else if (input._keys && input._keys.space) { // Keep dance on space for now, ensure _keys exists if BasicCharacterControllerInput is very minimal
       this._parent.SetState('dance');
@@ -110,24 +125,37 @@ export class WalkState extends State {
   }
 
   Enter(prevState) {
+    // Check if animations are loaded before trying to access them
+    // console.log(`[WalkState] Enter called. Prev state: ${prevState ? prevState.Name : 'null'}. Entity: ${this._parent._proxy._target?.uuid}`); // Original log
+    console.log(`[NET-ANIM-DBG] WalkState.Enter: Called. Prev state: ${prevState ? prevState.Name : 'null'}. Entity: ${this._parent._proxy?._target?.uuid || 'N/A'}`);
+    if (!this._parent._proxy._animations['walk'] || !this._parent._proxy._animations['walk'].action) {
+      console.warn(`[NET-ANIM-DBG] WalkState.Enter: Walk animation not loaded or no action. Animations loaded: ${!!this._parent._proxy._animations['walk']}, Action exists: ${!!this._parent._proxy._animations['walk']?.action}. Entity: ${this._parent._proxy?._target?.uuid || 'N/A'}`);
+      return;
+    }
+    
     const curAction = this._parent._proxy._animations['walk'].action;
     if (prevState) {
-      const prevAction = this._parent._proxy._animations[prevState.Name].action;
+      // Check if previous state animation exists
+      if (this._parent._proxy._animations[prevState.Name] && this._parent._proxy._animations[prevState.Name].action) {
+        const prevAction = this._parent._proxy._animations[prevState.Name].action;
 
-      curAction.enabled = true;
+        curAction.enabled = true;
 
-      if (prevState.Name === 'run') {
-        const ratio =
-          curAction.getClip().duration / prevAction.getClip().duration;
-        curAction.time = prevAction.time * ratio;
+        if (prevState.Name === 'run') {
+          const ratio =
+            curAction.getClip().duration / prevAction.getClip().duration;
+          curAction.time = prevAction.time * ratio;
+        } else {
+          curAction.time = 0.0;
+          curAction.setEffectiveTimeScale(1.0);
+          curAction.setEffectiveWeight(1.0);
+        }
+
+        curAction.crossFadeFrom(prevAction, 0.5, true);
+        curAction.play();
       } else {
-        curAction.time = 0.0;
-        curAction.setEffectiveTimeScale(1.0);
-        curAction.setEffectiveWeight(1.0);
+        curAction.play();
       }
-
-      curAction.crossFadeFrom(prevAction, 0.5, true);
-      curAction.play();
     } else {
       curAction.play();
     }
@@ -138,6 +166,7 @@ export class WalkState extends State {
   Update(timeElapsed, input) {
     // If no longer moving, transition to 'idle'
     if (!input.isMoving) {
+      console.log(`[NET-ANIM-DBG] WalkState.Update: input.isMoving is FALSE. Transitioning to 'idle'. Entity: ${this._parent._proxy?._target?.uuid || 'N/A'}`);
       this._parent.SetState('idle');
       return;
     }

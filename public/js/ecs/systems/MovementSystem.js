@@ -22,7 +22,16 @@ export class MovementSystem extends System {
         
         // Listen for remote position updates
         document.addEventListener('remote-position-update', (event) => {
+            // console.log(`[NET-ANIM-DBG] MovementSystem: remote-position-update received for entity ${event.detail.entityId}, isMoving: ${event.detail.isMoving}, position: ${JSON.stringify(event.detail.position)}`);
             this.handleRemotePosition(event.detail);
+            // Log after attempting to update the component
+            const entity = this.entityManager.getEntityById(event.detail.entityId);
+            if (entity) {
+                const mc = entity.getComponent('MovementComponent');
+                if (mc) {
+                    // console.log(`[NET-ANIM-DBG] MovementSystem: MovementComponent updated for ${event.detail.entityId}, isMoving: ${mc.isMoving}`);
+                }
+            }
         });
         
         // Set up click and drag handlers for player movement and camera control
@@ -157,7 +166,7 @@ export class MovementSystem extends System {
                         const movementComponent = entity.getComponent('MovementComponent');
                         const transformComponent = entity.getComponent('TransformComponent');
                         
-                        console.log('Current position:', transformComponent.position);
+                        // console.log('Current position:', transformComponent.position);
                         
                         // Set target position (keep y coordinate unchanged)
                         movementComponent.targetPosition.set(
@@ -167,7 +176,7 @@ export class MovementSystem extends System {
                         );
                         movementComponent.isMoving = true;
                         
-                        console.log('Set target position to:', movementComponent.targetPosition);
+                        // console.log('Set target position to:', movementComponent.targetPosition);
                         
                         // Emit movement to server
                         if (this.socket) {
@@ -177,10 +186,11 @@ export class MovementSystem extends System {
                                     x: movementComponent.targetPosition.x,
                                     y: movementComponent.targetPosition.y,
                                     z: movementComponent.targetPosition.z
-                                }
+                                },
+                                isMoving: movementComponent.isMoving
                             };
                             
-                            console.log('Emitting position update to server:', updateData);
+                            // console.log('Emitting position update to server:', updateData);
                             this.socket.emit('update position', updateData);
                         } else {
                             console.error('Socket not available for position update');
@@ -237,14 +247,7 @@ export class MovementSystem extends System {
         );
         const distance = direction.length();
         
-        console.log('Moving player:', {
-            from: transformComponent.position.clone(),
-            to: movementComponent.targetPosition.clone(),
-            distance: distance,
-            speed: movementComponent.speed,
-            deltaTime: deltaTime
-        });
-        
+  
         // If close enough to target, stop moving
         if (distance < 0.1) {
             movementComponent.isMoving = false;
@@ -271,7 +274,7 @@ export class MovementSystem extends System {
         } else {
             const movement = direction.clone().multiplyScalar(moveAmount);
             transformComponent.position.add(movement);
-            console.log('Moved by:', movement, 'New position:', transformComponent.position.clone());
+            // console.log('Moved by:', movement, 'New position:', transformComponent.position.clone());
         }
         
         // Face movement direction
@@ -298,7 +301,8 @@ export class MovementSystem extends System {
                         },
                         rotation: {
                             y: transformComponent.rotation.y
-                        }
+                        },
+                        isMoving: movementComponent.isMoving
                     });
                 }
                 
@@ -312,97 +316,95 @@ export class MovementSystem extends System {
      * @param {Object} data - The position data
      */
     handleRemotePosition(data) {
-        console.log('[MovementSystem] Handling remote position update:', data);
+        // console.log(`[NET-ANIM-DBG] MovementSystem.handleRemotePosition: playerId=${data.playerId}, isMoving=${data.isMoving}`);
         
-        // Find player entity with matching ID
-        let foundPlayer = false;
-        for (const entity of this.world.entities) {
-            if (entity.hasComponent('PlayerComponent') && 
-                entity.hasComponent('TransformComponent') &&
-                entity.hasComponent('MovementComponent')) {
-                
-                const playerComponent = entity.getComponent('PlayerComponent');
-                
-                // Skip local player
-                if (playerComponent.isLocalPlayer) continue;
-                
-                // Update remote player if ID matches
-                if (playerComponent.playerId === data.playerId) {
-                    console.log('[MovementSystem] Found matching remote player:', playerComponent.playerId);
-                    foundPlayer = true;
-                    
-                    const movementComponent = entity.getComponent('MovementComponent');
-                    const transformComponent = entity.getComponent('TransformComponent');
-                    
-                    console.log('[MovementSystem] Remote player components:', {
-                        hasMovement: !!movementComponent,
-                        hasTransform: !!transformComponent,
-                        hasCharacterController: !!entity.getComponent('CharacterControllerComponent')
-                    });
-                    
-                    // Ensure position is a Vector3 object
-                    if (!(transformComponent.position instanceof THREE.Vector3)) {
-                        console.log('[MovementSystem] Converting remote position to Vector3');
-                        transformComponent.position = new THREE.Vector3(
-                            transformComponent.position.x || 0,
-                            transformComponent.position.y || 0,
-                            transformComponent.position.z || 0
-                        );
-                    }
-                    
-                    // Ensure targetPosition is a Vector3 object
-                    if (!(movementComponent.targetPosition instanceof THREE.Vector3)) {
-                        console.log('[MovementSystem] Converting remote targetPosition to Vector3');
-                        movementComponent.targetPosition = new THREE.Vector3(
-                            movementComponent.targetPosition.x || 0,
-                            movementComponent.targetPosition.y || 0,
-                            movementComponent.targetPosition.z || 0
-                        );
-                    }
-                    
-                    // If target position is provided, update movement target
-                    if (data.targetPosition) {
-                        console.log('[MovementSystem] Setting remote target position:', data.targetPosition);
-                        movementComponent.targetPosition.set(
-                            data.targetPosition.x || 0,
-                            data.targetPosition.y || 0,
-                            data.targetPosition.z || 0
-                        );
-                        movementComponent.isMoving = true;
-                        console.log('[MovementSystem] Set remote player isMoving = true');
-                    }
-                    
-                    // If current position is provided, update position directly
-                    if (data.position) {
-                        console.log('[MovementSystem] Setting remote position directly:', data.position);
-                        transformComponent.position.set(
-                            data.position.x || 0,
-                            data.position.y || 0,
-                            data.position.z || 0
-                        );
-                    }
-                    
-                    // If rotation is provided, update rotation
-                    if (data.rotation) {
-                        console.log('[MovementSystem] Setting remote rotation:', data.rotation);
-                        transformComponent.rotation.y = data.rotation.y || 0;
-                    }
-                    
-                    break; // Found the player, no need to continue searching
-                }
+        // Find entity by playerId - this is the reliable identifier for remote players
+        let entity;
+        for (const e of this.world.entities) {
+            const playerComponent = e.getComponent('PlayerComponent');
+            if (playerComponent && playerComponent.playerId === data.playerId && !playerComponent.isLocalPlayer) {
+                entity = e;
+                break;
             }
         }
-        
-        if (!foundPlayer) {
-            console.warn('[MovementSystem] No matching remote player found for ID:', data.playerId);
-            console.log('[MovementSystem] Available players:', this.world.entities
-                .filter(e => e.hasComponent('PlayerComponent'))
-                .map(e => ({
-                    id: e.getComponent('PlayerComponent').playerId,
-                    isLocal: e.getComponent('PlayerComponent').isLocalPlayer
-                }))
-            );
+
+        if (!entity) {
+            console.warn(`[NET-ANIM-DBG] MovementSystem.handleRemotePosition: No entity found for playerId=${data.playerId}`);
+            return;
         }
+
+        const movementComponent = entity.getComponent('MovementComponent');
+        const transformComponent = entity.getComponent('TransformComponent');
+
+        if (!movementComponent || !transformComponent) {
+            console.warn(`[NET-ANIM-DBG] MovementSystem.handleRemotePosition: Missing required components for entity ${entity.id}`);
+            return;
+        }
+
+        // Store previous position for movement detection
+        const previousPosition = transformComponent.position.clone();
+        
+        // If target position is provided, update movement target
+        if (data.targetPosition) {
+            // console.log('[NET-ANIM-DBG] Setting remote target position:', data.targetPosition);
+            movementComponent.targetPosition.set(
+                data.targetPosition.x || 0,
+                data.targetPosition.y || 0,
+                data.targetPosition.z || 0
+            );
+            movementComponent.isMoving = true;
+            // console.log('[NET-ANIM-DBG] Set remote player isMoving = true (via targetPosition)');
+        }
+        
+        // If current position is provided, update position directly
+        if (data.position) {
+            // console.log('[NET-ANIM-DBG] Setting remote position directly:', data.position);
+            const newPosition = new THREE.Vector3(
+                data.position.x || 0,
+                data.position.y || 0,
+                data.position.z || 0
+            );
+            
+            // Calculate movement distance to detect if player is moving
+            const movementDistance = previousPosition.distanceTo(newPosition);
+            const movementThreshold = 0.01; // Minimum distance to consider as movement
+            
+            // If no targetPosition was provided but position changed significantly, 
+            // set isMoving based on velocity
+            if (!data.targetPosition && movementDistance > movementThreshold) {
+                movementComponent.isMoving = true;
+                // console.log('[NET-ANIM-DBG] Set remote player isMoving = true (via velocity detection)', {
+                //     distance: movementDistance,
+                //     threshold: movementThreshold
+                // });
+            } else if (!data.targetPosition && movementDistance <= movementThreshold) {
+                // Only set to false if we're using distance-based detection
+                // and there's no explicit isMoving flag
+                if (typeof data.isMoving !== 'boolean') {
+                    movementComponent.isMoving = false;
+                    // console.log('[NET-ANIM-DBG] Set remote player isMoving = false (velocity too low)', {
+                    //     distance: movementDistance,
+                    //     threshold: movementThreshold
+                    // });
+                }
+            }
+            
+            transformComponent.position.copy(newPosition);
+        }
+        
+        // If rotation is provided, update rotation
+        if (data.rotation) {
+            // console.log('[NET-ANIM-DBG] Setting remote rotation:', data.rotation);
+            transformComponent.rotation.y = data.rotation.y || 0;
+        }
+        
+        // IMPORTANT: If isMoving state is explicitly provided, it takes precedence over distance-based detection
+        if (typeof data.isMoving === 'boolean') {
+            // console.log('[NET-ANIM-DBG] Setting remote isMoving state explicitly:', data.isMoving);
+            movementComponent.isMoving = data.isMoving;
+        }
+        
+        // console.log(`[NET-ANIM-DBG] Updated remote entity ${entity.id} for player ${data.playerId}: isMoving=${movementComponent.isMoving}`);
     }
     
     /**

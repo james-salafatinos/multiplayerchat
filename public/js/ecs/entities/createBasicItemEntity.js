@@ -36,7 +36,7 @@ export function createBasicItemEntity(world, options = {}) {
         ...options
     };
     
-    console.log('Creating basic item with config:', config);
+    // console.log('Creating basic item with config:', config);
     
     return createItemEntity(world, config);
 }

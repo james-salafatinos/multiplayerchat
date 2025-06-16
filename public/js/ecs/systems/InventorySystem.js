@@ -31,7 +31,7 @@ export class InventorySystem extends System {
         
         // Listen for inventory display updates to refresh UI
         document.addEventListener('inventory-display-update', () => {
-            console.log('[InventorySystem] Received inventory-display-update event.');
+            // console.log('[InventorySystem] Received inventory-display-update event.');
             if (!this.world) {
                 console.warn('[InventorySystem] inventory-display-update: this.world is not yet available.');
                 this.isItemBeingPickedUp = false; // Still release lock if world isn't ready, to prevent permanent lock
@@ -46,7 +46,7 @@ export class InventorySystem extends System {
 
             if (localPlayerEntity && localPlayerEntity.hasComponent('InventoryComponent')) {
                 const inventoryComponent = localPlayerEntity.getComponent('InventoryComponent');
-                console.log('[InventorySystem] inventory-display-update: Found local player, inventory slots:', JSON.stringify(inventoryComponent.slots));
+                // console.log('[InventorySystem] inventory-display-update: Found local player, inventory slots:', JSON.stringify(inventoryComponent.slots));
                 this.updateInventoryUI(inventoryComponent);
                 
                 // Make sure inventory panel is visible after an update
@@ -70,7 +70,7 @@ export class InventorySystem extends System {
             
             // Listen for inventory updates from server
             this.socket.on('inventory update', (data) => {
-                console.log('[InventorySystem] Received inventory update from server:', data);
+                // console.log('[InventorySystem] Received inventory update from server:', data);
                 
                 // Find local player entity
                 if (!this.world) {
@@ -93,11 +93,11 @@ export class InventorySystem extends System {
                     // Handle different formats of inventory update
                     if (data.inventory) {
                         // Full inventory update
-                        console.log('[InventorySystem] Updating full inventory:', data.inventory);
+                        // console.log('[InventorySystem] Updating full inventory:', data.inventory);
                         inventoryComponent.slots = data.inventory;
                     } else if (data.action) {
                         // Action-based update (handled by handleInventoryUpdate)
-                        console.log('[InventorySystem] Handling action-based update:', data.action);
+                        // console.log('[InventorySystem] Handling action-based update:', data.action);
                         this.handleInventoryUpdate({
                             playerId: localPlayerEntity.getComponent('PlayerComponent').playerId,
                             action: data.action,
@@ -115,7 +115,7 @@ export class InventorySystem extends System {
                         });
                     } else if (data.item) {
                         // Direct item pickup update
-                        console.log('[InventorySystem] Processing direct item pickup:', data.item);
+                        // console.log('[InventorySystem] Processing direct item pickup:', data.item);
                         // Find first empty slot
                         const emptySlotIndex = inventoryComponent.slots.findIndex(slot => !slot);
                         if (emptySlotIndex !== -1) {
@@ -383,7 +383,7 @@ export class InventorySystem extends System {
      * @param {Object} data - The removal data
      */
     handleWorldItemRemoval(data) {
-        console.log('Handling world item removal:', data);
+        // console.log('Handling world item removal:', data);
         
         if (!data || !data.itemUuid) {
             console.error('Invalid removal data received');
@@ -394,7 +394,7 @@ export class InventorySystem extends System {
         const itemEntity = this.itemEntitiesByUuid.get(data.itemUuid);
         
         if (itemEntity) {
-            console.log(`Removing item entity with UUID: ${data.itemUuid}`);
+            // console.log(`Removing item entity with UUID: ${data.itemUuid}`);
             
             // Remove the entity from the world
             this.world.removeEntity(itemEntity);
@@ -419,7 +419,7 @@ export class InventorySystem extends System {
      * @param {Object} data - The item data
      */
     handleWorldItemAddition(data) {
-        console.log('Handling world item addition:', data);
+        // console.log('Handling world item addition:', data);
         
         // Check if item already exists (this can happen in certain edge cases)
         if (this.itemEntitiesByUuid.has(data.uuid)) {
@@ -458,7 +458,7 @@ export class InventorySystem extends System {
      * @param {Object} data - The update data
      */
     handleInventoryUpdate(data) {
-        console.log('Handling inventory update:', data);
+        // console.log('Handling inventory update:', data);
         
         // Find local player entity
         const localPlayerEntity = this.world.entities.find(entity => 
@@ -550,7 +550,7 @@ export class InventorySystem extends System {
      * @param {Object} data - The inventory update data
      */
     handleInventoryUpdate(data) {
-        console.log('Received inventory update:', data);
+        // console.log('Received inventory update:', data);
         
         // Find player entity with matching ID
         const playerEntity = this.world.entities.find(entity => 
@@ -824,7 +824,7 @@ export class InventorySystem extends System {
                         iconPath = iconPath.substring(1);
                     }
                     
-                    console.log(`Loading inventory icon from: ${iconPath}`);
+                    // console.log(`Loading inventory icon from: ${iconPath}`);
                     itemDisplay.style.backgroundImage = `url('${iconPath}')`;
                     itemDisplay.style.backgroundSize = 'contain';
                     itemDisplay.style.backgroundPosition = 'center';

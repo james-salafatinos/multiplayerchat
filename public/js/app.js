@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (localPlayerId && playerEntities.has(localPlayerId)) {
                 const localPlayerEntity = playerEntities.get(localPlayerId);
                 const playerComponent = localPlayerEntity.getComponent('PlayerComponent'); // Get PlayerComponent
-                // const meshComponent = localPlayerEntity.getComponent('MeshComponent'); // No longer needed here for local player color
+                // const meshComponent = localPlayerEntity.getComponent('MeshComponent'); // No longer needed here for local player
                 
                 if (playerComponent) {
                     console.log(`[App.js Color Picker] Setting desiredColor to ${newColor} for local player.`);
@@ -168,7 +168,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     username: player.username,
                     isLocalPlayer: isLocal,
                     color: player.color || '#3498db', // Use server color or default
-                    position: player.position
+                    position: player.position,
+                    isMoving: player.isMoving || false // Include animation state from server
                 });
                 playerEntity.addComponent(new InventoryComponent());
                 playerEntities.set(player.id, playerEntity);
@@ -217,11 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (transform && player.position) {
                 transform.position.set(player.position.x, player.position.y, player.position.z);
             }
-            // Update color if provided
-            // const meshComponent = playerEntity.getComponent('MeshComponent'); // Already declared below for local player
-            // if (meshComponent && meshComponent.mesh && meshComponent.mesh.material && player.color) {
-            //    meshComponent.mesh.material.color.set(player.color);
-            // }
+          
             // Ensure InventoryComponent for local player
             if (isLocal && !playerEntity.getComponent(InventoryComponent)) {
                 console.warn(`[App.js 'player-joined'] Local player ${player.id} was missing InventoryComponent. Adding it now.`);
@@ -252,7 +249,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 username: player.username,
                 isLocalPlayer: isLocal,
                 color: player.color || '#3498db', // Use server color or default
-                position: player.position
+                position: player.position,
+                isMoving: player.isMoving || false // Include animation state from server
             });
             
             console.log(`[App.js 'player-joined'] Created entity for ${player.id}:`, playerEntity);
@@ -322,15 +320,15 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('player-inventory-update', (event) => {
         const inventoryData = event.detail; // This is the array of items or nulls
         const localId = getLocalPlayerId();
-        console.log(`[App.js] 'player-inventory-update' received for player ${localId}:`, inventoryData);
+        // console.log(`[App.js] 'player-inventory-update' received for player ${localId}:`, inventoryData);
         
         const localPlayerEntity = playerEntities.get(localId);
         if (localPlayerEntity) {
             const inventoryComponent = localPlayerEntity.getComponent('InventoryComponent');
             if (inventoryComponent) {
-                console.log('[App.js] Found InventoryComponent, updating slots with received data');
+                // console.log('[App.js] Found InventoryComponent, updating slots with received data');
                 inventoryComponent.slots = inventoryData; // Directly replace slots
-                console.log('[App.js] Local player inventory initialized:', JSON.stringify(inventoryComponent.slots));
+                // console.log('[App.js] Local player inventory initialized:', JSON.stringify(inventoryComponent.slots));
                 // Dispatch event for UI refresh
                 document.dispatchEvent(new CustomEvent('inventory-display-update'));
             } else {
@@ -348,9 +346,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle local player inventory changes (after pickup, drop, move)
     document.addEventListener('local-inventory-changed', (event) => {
         const updateData = event.detail; // { inventory: newInventoryArray, item: optionalPickedUpItem, message: statusMessage }
-        console.log("[App.js] 'local-inventory-changed' event received. Detail:", updateData);
+        // console.log("[App.js] 'local-inventory-changed' event received. Detail:", updateData);
         const localId = getLocalPlayerId();
-        console.log("[App.js] 'local-inventory-changed': localId is:", localId);
+        // console.log("[App.js] 'local-inventory-changed': localId is:", localId);
 
         // Show status message if available
         if (updateData.message) {
@@ -384,7 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Use string lookup for component to be consistent
             const inventoryComponent = localPlayerEntity.getComponent('InventoryComponent');
             if (inventoryComponent) {
-                console.log('[App.js] Updating inventory with:', updateData.inventory);
+                // console.log('[App.js] Updating inventory with:', updateData.inventory);
                 // Check if we're getting a full inventory or just updates
                 if (Array.isArray(updateData.inventory)) {
                     inventoryComponent.slots = updateData.inventory; // Update with the new full inventory
@@ -393,9 +391,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     inventoryComponent.slots[updateData.slotIndex] = updateData.item || null;
                 }
                 
-                console.log('[App.js] Local player inventory updated:', JSON.stringify(inventoryComponent.slots));
+                // console.log('[App.js] Local player inventory updated:', JSON.stringify(inventoryComponent.slots));
                 if (updateData.item) {
-                    console.log('[App.js] Item involved in update:', updateData.item.name);
+                    // console.log('[App.js] Item involved in update:', updateData.item.name);
                 }
                 // Dispatch event for UI refresh with slight delay to ensure state is updated
                 setTimeout(() => {
@@ -416,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle initial world items state
     document.addEventListener('world-items-state-update', (event) => {
         const items = event.detail; // Array of item objects from server
-        console.log('Received world items state update:', items);
+        // console.log('Received world items state update:', items);
 
         worldItemEntities.forEach(entity => entity.deactivate());
         worldItemEntities.clear();
@@ -449,14 +447,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle a single item being removed from the world
     document.addEventListener('world-item-removed', (event) => {
         const { uuid } = event.detail;
-        console.log('Received world item removed (document event):', uuid);
+        // console.log('Received world item removed (document event):', uuid);
         removeWorldItemFromScene(uuid);
     });
     
     // Socket event for world item removed
     if (socket) {
         socket.on('item-removed', (uuid) => {
-            console.log('Received world item removed (socket event):', uuid);
+            // console.log('Received world item removed (socket event):', uuid);
             removeWorldItemFromScene(uuid);
         });
     }
@@ -476,14 +474,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle a single item being added to the world
     document.addEventListener('world-item-added', (event) => {
         const itemData = event.detail;
-        console.log('Received world item added (document event):', itemData);
+        // console.log('Received world item added (document event):', itemData);
         addWorldItemToScene(itemData);
     });
     
     // Socket event for world item added
     if (socket) {
         socket.on('world-item-added', (itemData) => {
-            console.log('Received world item added (socket event):', itemData);
+            // console.log('Received world item added (socket event):', itemData);
             addWorldItemToScene(itemData);
         });
     }
@@ -507,7 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
             gltfPath: itemData.gltfPath
         });
         worldItemEntities.set(itemData.uuid, itemEntity);
-        console.log('World item entity added:', itemData.uuid);
+        // console.log('World item entity added:', itemData.uuid);
     }
     
     // Handle trade requests
@@ -515,7 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = event.detail;
         const localId = getLocalPlayerId();
         
-        console.log('[App.js] Received trade request:', data);
+        // console.log('[App.js] Received trade request:', data);
         
         // Find local player entity
         const localPlayerEntity = playerEntities.get(localId);
@@ -532,7 +530,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // Handle the trade request
-        console.log('[App.js] Forwarding trade request to handleTradeRequest');
+        // console.log('[App.js] Forwarding trade request to handleTradeRequest');
         handleTradeRequest(
             {
                 fromPlayerId: data.fromPlayerId,
@@ -555,7 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // NEW: Handle player color changed event from server (for other players)
     if (socket) {
         socket.on('player:colorChanged', (data) => {
-            console.log('[App.js] Received player:colorChanged:', data);
+            // console.log('[App.js] Received player:colorChanged:', data);
             const { id, color } = data; // This 'id' is the socket ID of the player whose color changed
             const localId = getLocalPlayerId();
 
@@ -566,14 +564,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const playerComponent = playerEntity.getComponent('PlayerComponent'); // Get PlayerComponent for remote player
 
                 if (meshComponent && meshComponent.mesh) {
-                    console.log(`[App.js player:colorChanged] Applying color ${color} to remote player ${id}'s mesh.`);
+                    // console.log(`[App.js player:colorChanged] Applying color ${color} to remote player ${id}'s mesh.`);
                     // Check if mesh is a Group (which is the case for player entities)
                     if (meshComponent.mesh.type === 'Group' && meshComponent.mesh.children.length > 0) {
                         // The actual mesh with material is the first child of the group
                         const actualMesh = meshComponent.mesh.children[0];
                         if (actualMesh && actualMesh.material) {
                             actualMesh.material.color.set(color);
-                            console.log(`[App.js player:colorChanged] Successfully updated remote player ${id}'s mesh color to ${color}`);
+                            // console.log(`[App.js player:colorChanged] Successfully updated remote player ${id}'s mesh color to ${color}`);
                         } else {
                             console.error(`[App.js player:colorChanged] Player mesh child or its material not found for remote player ${id}`);
                         }

@@ -27,6 +27,7 @@ export function createPlayerEntity(world, scene, options = {}) { // Added 'scene
         isLocalPlayer: false,
         color: '#3498db',
         position: new THREE.Vector3(0, 0, 0),
+        isMoving: false, // Default animation state
         ...options
     };
     
@@ -40,21 +41,33 @@ export function createPlayerEntity(world, scene, options = {}) { // Added 'scene
         scale: new THREE.Vector3(1, 1, 1)
     }));
 
+    // Create entity first so we have an ID to pass to the character controller
+    // Add entity to world early so it has an ID
+    world.addEntity(entity);
+    
     // CharacterControllerComponent handles its own model loading and scene addition
     const characterParams = {
         scene: scene,
         assetPath: './models/character/', // As per your folder structure
         modelFile: 'model.fbx',
-        modelScale: config.isLocalPlayer ? 0.01 : 0.01, // Increased scale for debugging // Example: can vary scale, or keep consistent. Adjust as needed.
+        modelScale: config.isLocalPlayer ? 0.01 : 0.01, // Same scale for both local and remote players
         animationFiles: {
             idle: 'idle.fbx',
-            walk: 'walk.fbx', // Assuming walk.fbx based on typical states
+            walk: 'walk.fbx',
             run: 'run.fbx',
-            dance: 'dance.fbx' // Assuming dance.fbx based on typical states
+            dance: 'dance.fbx'
         },
-        isLocalPlayer: config.isLocalPlayer // Pass this to the controller if it needs to behave differently
+        isLocalPlayer: config.isLocalPlayer,
+        entityId: entity.id, // Pass entity ID to the character controller
+        playerId: config.playerId, // Pass player ID as well for better logging
+        initialIsMoving: config.isMoving // Pass initial movement state
     };
+    
+    console.log(`[NET-ANIM-DBG] Creating CharacterControllerComponent for ${config.isLocalPlayer ? 'LOCAL' : 'REMOTE'} player entity ${entity.id} with playerId ${config.playerId}`);
     entity.addComponent(new CharacterControllerComponent(characterParams));
+    
+    // Remove entity from world since we'll add it again at the end
+    world.removeEntity(entity);
     
     // Player component
     entity.addComponent(new PlayerComponent({
@@ -68,7 +81,7 @@ export function createPlayerEntity(world, scene, options = {}) { // Added 'scene
     entity.addComponent(new MovementComponent({
         targetPosition: new THREE.Vector3().copy(config.position),
         speed: 5,
-        isMoving: false
+        isMoving: config.isMoving // Use the isMoving state from server data
     }));
     
     // Network sync component

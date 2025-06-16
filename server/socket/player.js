@@ -66,6 +66,9 @@ export function initPlayerHandlers(socket, io, players, worldItems) {
             existingPlayer.position.x,
             existingPlayer.position.y,
             existingPlayer.position.z,
+            existingPlayer.rotation?.x || 0,
+            existingPlayer.rotation?.y || 0,
+            existingPlayer.rotation?.z || 0,
             existingPlayer.color
           );
           console.log(`Created new state for authenticated user ${username}`);
@@ -95,7 +98,8 @@ export function initPlayerHandlers(socket, io, players, worldItems) {
         id: socket.id,
         username: username,
         position: existingPlayer.position,
-        color: existingPlayer.color
+        color: existingPlayer.color,
+        isMoving: existingPlayer.isMoving || false // Include animation state
       });
       
       // Send updated inventory to the player
@@ -127,7 +131,8 @@ export function initPlayerHandlers(socket, io, players, worldItems) {
           position: position,
           color: color,
           inventory: Array(28).fill(null),
-          isGuest: false
+          isGuest: false,
+          isMoving: false // Initialize isMoving state
         };
         
         players.set(socket.id, newPlayer);
@@ -139,6 +144,9 @@ export function initPlayerHandlers(socket, io, players, worldItems) {
             position.x,
             position.y,
             position.z,
+            0,
+            0,
+            0,
             color
           );
         }
@@ -163,7 +171,8 @@ export function initPlayerHandlers(socket, io, players, worldItems) {
           id: socket.id,
           username: username,
           position: position,
-          color: color
+          color: color,
+          isMoving: newPlayer.isMoving // Send actual initial state of the new player
         });
         
         // Send the current players list to the new player
@@ -173,7 +182,8 @@ export function initPlayerHandlers(socket, io, players, worldItems) {
             id,
             username: player.username,
             position: player.position,
-            color: player.color
+            color: player.color,
+            isMoving: player.isMoving || false // Include animation state
           }));
           
         socket.emit('players list', playersList);
@@ -234,13 +244,20 @@ export function initPlayerHandlers(socket, io, players, worldItems) {
           player.rotation = data.rotation;
         }
         
+        // Update isMoving state if provided
+        if (typeof data.isMoving === 'boolean') {
+          player.isMoving = data.isMoving;
+        }
+        
         // Broadcast the position update to other clients
         // Include both current position and target position for smooth interpolation
+        console.log(`[NET-ANIM-DBG] Server broadcasting 'player position': ID=${socket.id}, isMoving=${player.isMoving}, pos=${JSON.stringify(player.position)}, rot=${JSON.stringify(player.rotation)}`);
         socket.broadcast.emit('player position', {
           playerId: socket.id,
           position: player.position,
           targetPosition: player.targetPosition || player.position, // Use position as fallback
-          rotation: player.rotation
+          rotation: player.rotation,
+          isMoving: player.isMoving || false // Include animation state
         });
         
         // If player is authenticated, periodically update their position in the database
@@ -260,9 +277,9 @@ export function initPlayerHandlers(socket, io, players, worldItems) {
               player.position.x,
               player.position.y,
               player.position.z,
-              player.rotation.x || 0,
-              player.rotation.y || 0,
-              player.rotation.z || 0,
+              player.rotation?.x || 0,
+              player.rotation?.y || 0,
+              player.rotation?.z || 0,
               player.color
             );
             player.lastPositionSave = currentTime;
@@ -335,6 +352,9 @@ export function initPlayerHandlers(socket, io, players, worldItems) {
           player.position.x,
           player.position.y,
           player.position.z,
+          player.rotation?.x || 0,
+          player.rotation?.y || 0,
+          player.rotation?.z || 0,
           player.color
         );
         console.log(`Saved final state for user ${socket.userId} before disconnect`);

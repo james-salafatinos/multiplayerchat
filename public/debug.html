@@ -457,11 +457,37 @@
                     // Create modal or expand row with details
                     const detailsDiv = document.createElement('div');
                     detailsDiv.className = 'player-details';
+                    // Count items in inventory
+                    const itemCount = player.inventory && player.inventory.slots 
+                        ? player.inventory.slots.filter(slot => slot !== null).length 
+                        : 0;
+                    const totalSlots = player.inventory ? (player.inventory.maxSlots || 28) : 28;
+                    
+                    // Count skills
+                    const skillCount = player.skills 
+                        ? Object.keys(player.skills).filter(key => key !== 'needsUpdate').length 
+                        : 0;
+
                     detailsDiv.innerHTML = `
                         <h4>Player Details</h4>
-                        <div><strong>Inventory:</strong> <pre>${formatJson(player.inventory || {})}</pre></div>
-                        <div><strong>Skills:</strong> <pre>${formatJson(player.skills || {})}</pre></div>
-                        <div><strong>Rotation:</strong> <pre>${formatJson(player.rotation || {})}</pre></div>
+                        <div><strong>Player ID:</strong> ${player.id}</div>
+                        <div><strong>Entity ID:</strong> ${player.entityId || 'N/A'}</div>
+                        <div><strong>Username:</strong> ${player.username || 'Unknown'}</div>
+                        
+                        <h5>Position</h5>
+                        <div><pre>${formatJson(player.position || {})}</pre></div>
+                        
+                        <h5>Rotation</h5>
+                        <div><pre>${formatJson(player.rotation || {})}</pre></div>
+                        
+                        <h5>Inventory (${itemCount}/${totalSlots} slots used)</h5>
+                        <div><pre>${formatJson(player.inventory || {})}</pre></div>
+                        
+                        <h5>Skills (${skillCount})</h5>
+                        <div><pre>${formatJson(player.skills || {})}</pre></div>
+                        
+                        <h5>Raw Player Data</h5>
+                        <div><pre>${formatJson(player)}</pre></div>
                     `;
                     
                     // Check if details are already shown

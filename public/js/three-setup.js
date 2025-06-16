@@ -16,7 +16,7 @@ export function initThreeJS() {
     
     // Create the scene
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x1a1a2e);
+    scene.background = new THREE.Color(0xffffff);
     
     // Create the camera
     const aspect = container.clientWidth / container.clientHeight;

@@ -159,20 +159,35 @@ export class ChatBubbleSystem extends System {
             return;
         }
         
-        // Get the mesh from the entity to find its world position
-        const meshComponent = entity.getComponent('MeshComponent');
-        if (!meshComponent || !meshComponent.mesh) {
-            console.log('Entity has no mesh component or mesh');
+        // Get the mesh from the entity - try both old and new systems
+        let mesh = null;
+        
+        // First try the new CharacterControllerComponent
+        const characterControllerComponent = entity.getComponent('CharacterControllerComponent');
+        if (characterControllerComponent && characterControllerComponent.controller && characterControllerComponent.controller._target) {
+            mesh = characterControllerComponent.controller._target;
+            console.log('Using mesh from CharacterControllerComponent');
+        } else {
+            // Fallback to old MeshComponent system
+            const meshComponent = entity.getComponent('MeshComponent');
+            if (meshComponent && meshComponent.mesh) {
+                mesh = meshComponent.mesh;
+                console.log('Using mesh from MeshComponent');
+            }
+        }
+        
+        if (!mesh) {
+            console.log('Entity has no mesh component or character controller with mesh');
             return;
         }
         
         // Get the world position of the player mesh
         // For a player, we want to position at the top of their head
-        const playerHeight = 1.0; // Assuming player height is 1.0 units
+        const playerHeight = 8.0; // Assuming player height is 1.0 units
         
         // Create a position vector at the top center of the player's head
         const worldPos = new THREE.Vector3();
-        meshComponent.mesh.getWorldPosition(worldPos);
+        mesh.getWorldPosition(worldPos);
         worldPos.y += playerHeight / 2 + 0.1; // Position at top of head plus small offset
         
         // Convert world position to screen position

@@ -378,10 +378,10 @@ export function initSocketHandlers(io, players, worldItems) {
 
     
     // Emit other players list to the new client (excluding the new player)
-    const otherPlayers = Array.from(players.values())
-      .filter(player => player.id !== socket.id)
-      .map(player => ({
-        id: player.id,
+    const otherPlayers = Array.from(players.entries())
+      .filter(([socketId, player]) => socketId !== socket.id)
+      .map(([socketId, player]) => ({
+        id: socketId,
         username: player.username,
         position: player.position,
         color: player.color
