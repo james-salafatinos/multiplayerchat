@@ -83,7 +83,7 @@ export class BasicCharacterController {
 
       const manager = new THREE.LoadingManager();
       manager.onProgress = (url, itemsLoaded, itemsTotal) => {
-        // console.log(`[NET-ANIM-DBG] ${playerType} Animation loading progress for entity ${entityId}: ${itemsLoaded}/${itemsTotal} - ${url}`);
+        console.log(`[NET-ANIM-DBG] ${playerType} Animation loading progress for entity ${entityId}: ${itemsLoaded}/${itemsTotal} - ${url}`);
       };
       
       manager.onLoad = () => {
@@ -99,6 +99,11 @@ export class BasicCharacterController {
           detail: { entityId: entityId, isRemote: isRemote } 
         });
         document.dispatchEvent(event);
+        
+        // For debugging remote player animation issues
+        if (isRemote) {
+          console.log(`[NET-ANIM-FIX] LoadingManager.onLoad completed for REMOTE player ${entityId}`);
+        }
       };
       
       manager.onError = (url) => {
@@ -113,7 +118,23 @@ export class BasicCharacterController {
             clip: clip,
             action: action,
           };
-          // console.log(`[NET-ANIM-DBG] ${playerType} Animation '${animName}' loaded successfully for entity ${entityId}`);
+          console.log(`[NET-ANIM-DBG] ${playerType} Animation '${animName}' loaded successfully for entity ${entityId}`);
+          
+          // IMPORTANT FIX: For remote players, handle potential race conditions 
+          // by checking if this completes a set of essential animations
+          if (isRemote) {
+            const essentialAnimations = ['idle', 'walk'];
+            // Check if we have all essential animations loaded
+            const hasAllEssential = essentialAnimations.every(name => 
+              this._animations[name] && this._animations[name].action);
+            
+            if (hasAllEssential && !this._animationsLoaded) {
+              console.log(`[NET-ANIM-FIX] ${playerType} All essential animations loaded for entity ${entityId}. Setting _animationsLoaded=true`);
+              this._animationsLoaded = true;
+              // Initialize with appropriate state based on movement
+              this._stateMachine.SetState(this._pendingInitialState);
+            }
+          }
         } else {
           console.warn(`[NET-ANIM-DBG] ${playerType} Animation ${animName} loaded from ${modelPath} has no animation data for entity ${entityId}`);
         }
@@ -175,9 +196,13 @@ export class BasicCharacterController {
   }
 
   Update(entityId, deltaTime, movementComponent, transformComponent) {
-    // NET-ANIM-DBG: Log entity ID if available (requires passing entity or ID to controller)
-    // For now, we'll use a placeholder or rely on CharacterSystem logs for entity ID correlation.
-    // console.log(`[NET-ANIM-DBG] BasicCharacterController.Update: Start for entity (ID needed), initial movementComponent.isMoving: ${movementComponent?.isMoving}`);
+    const playerComponent = this._params.playerComponent;
+    const isRemotePlayer = playerComponent && !playerComponent.isLocalPlayer;
+    
+    // Debug log for remote player animation issues
+    if (isRemotePlayer) {
+      console.log(`[NET-ANIM-DBG] BasicCharacterController.Update: Remote entity ${entityId}, animations loaded: ${this._animationsLoaded}, isMoving: ${movementComponent?.isMoving}`);
+    }
 
     if (!this._target || !this._mixer || !movementComponent || !transformComponent) {
       return;

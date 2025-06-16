@@ -45,6 +45,17 @@ export function createPlayerEntity(world, scene, options = {}) { // Added 'scene
     // Add entity to world early so it has an ID
     world.addEntity(entity);
     
+    // Create PlayerComponent first so we can pass it to the CharacterControllerComponent
+    const playerComponent = new PlayerComponent({
+        playerId: config.playerId,
+        username: config.username,
+        isLocalPlayer: config.isLocalPlayer,
+        color: config.color
+    });
+    
+    // Add player component to the entity
+    entity.addComponent(playerComponent);
+    
     // CharacterControllerComponent handles its own model loading and scene addition
     const characterParams = {
         scene: scene,
@@ -60,7 +71,8 @@ export function createPlayerEntity(world, scene, options = {}) { // Added 'scene
         isLocalPlayer: config.isLocalPlayer,
         entityId: entity.id, // Pass entity ID to the character controller
         playerId: config.playerId, // Pass player ID as well for better logging
-        initialIsMoving: config.isMoving // Pass initial movement state
+        initialIsMoving: config.isMoving, // Pass initial movement state
+        playerComponent: playerComponent // CRITICAL FIX: Pass the player component directly
     };
     
     console.log(`[NET-ANIM-DBG] Creating CharacterControllerComponent for ${config.isLocalPlayer ? 'LOCAL' : 'REMOTE'} player entity ${entity.id} with playerId ${config.playerId}`);
@@ -69,13 +81,7 @@ export function createPlayerEntity(world, scene, options = {}) { // Added 'scene
     // Remove entity from world since we'll add it again at the end
     world.removeEntity(entity);
     
-    // Player component
-    entity.addComponent(new PlayerComponent({
-        playerId: config.playerId,
-        username: config.username,
-        isLocalPlayer: config.isLocalPlayer,
-        color: config.color
-    }));
+    // Player component already added earlier to pass to CharacterControllerComponent
     
     // Movement component
     entity.addComponent(new MovementComponent({
