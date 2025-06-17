@@ -52,6 +52,11 @@ async function createGroundTile(world, options) {
             scale: new THREE.Vector3(1, 1, 1)
         }));
         
+        // Set entity ID in userData for raycasting
+        groundMesh.traverse(object => {
+            object.userData.entityId = entity.id;
+        });
+        
         // Add mesh component
         entity.addComponent(new MeshComponent({
             mesh: groundMesh
@@ -116,6 +121,11 @@ async function createTreeEntity(world, options) {
             rotation: new THREE.Euler(0, Math.random() * Math.PI * 2, 0), // Random rotation
             scale: new THREE.Vector3(scale, scale, scale)
         }));
+        
+        // Set entity ID in userData for raycasting
+        treeMesh.traverse(object => {
+            object.userData.entityId = entity.id;
+        });
         
         // Add mesh component
         entity.addComponent(new MeshComponent({
@@ -189,6 +199,11 @@ async function createRockEntity(world, options) {
             rotation: new THREE.Euler(0, Math.random() * Math.PI * 2, 0), // Random rotation
             scale: new THREE.Vector3(scale, scale, scale)
         }));
+        
+        // Set entity ID in userData for raycasting
+        rockMesh.traverse(object => {
+            object.userData.entityId = entity.id;
+        });
         
         // Add mesh component
         entity.addComponent(new MeshComponent({

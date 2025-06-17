@@ -93,6 +93,15 @@ export class ContextMenuSystem extends System {
                             return;
                         }
                     }
+                    
+                    // Check if it's an interactable object (tree, rock, etc.)
+                    if (entity.hasComponent('InteractableComponent')) {
+                        const interactableComponent = entity.getComponent('InteractableComponent');
+                        
+                        // Show context menu for interactable object
+                        this.showInteractableContextMenu(x, y, interactableComponent, entity, intersect.point);
+                        return;
+                    }
                 }
             }
         }
@@ -380,6 +389,178 @@ export class ContextMenuSystem extends System {
      * @param {Entity} playerEntity - The player entity
      * @param {THREE.Vector3} targetPoint - The 3D point that was clicked
      */
+    /**
+     * Show context menu for interactable objects (trees, rocks, etc.)
+     * @param {number} x - X position for menu
+     * @param {number} y - Y position for menu
+     * @param {InteractableComponent} interactableComponent - The interactable component
+     * @param {Entity} entity - The interactable entity
+     * @param {THREE.Vector3} targetPoint - The 3D point that was clicked
+     */
+    showInteractableContextMenu(x, y, interactableComponent, entity, targetPoint) {
+        console.log('Showing interactable context menu for:', interactableComponent.type);
+        console.log('Available actions:', interactableComponent.actions);
+        
+        // Find local player entity
+        const localPlayerEntity = this.world.entities.find(entity => 
+            entity.active && 
+            entity.hasComponent('PlayerComponent') && 
+            entity.getComponent('PlayerComponent').isLocalPlayer
+        );
+        
+        if (!localPlayerEntity) {
+            console.error('Could not find local player entity');
+            return;
+        }
+        
+        // Create menu items from interactable actions
+        const menuItems = [];
+        
+        // Add all actions from the interactable component (if any)
+        if (interactableComponent.actions && Array.isArray(interactableComponent.actions)) {
+            for (const action of interactableComponent.actions) {
+                menuItems.push({
+                    label: action.name,
+                    action: (target) => {
+                        // Get player components
+                        const playerComponent = localPlayerEntity.getComponent('PlayerComponent');
+                        const movementComponent = localPlayerEntity.getComponent('MovementComponent');
+                        
+                        if (!movementComponent) {
+                            console.error('Local player has no movement component');
+                            return;
+                        }
+                    
+                        // Set target position to the object's position
+                        if (entity.hasComponent('TransformComponent')) {
+                            const transformComponent = entity.getComponent('TransformComponent');
+                            const position = transformComponent.position.clone();
+                            
+                            // Move slightly away from the object for better positioning
+                            const playerPos = localPlayerEntity.getComponent('TransformComponent').position;
+                            const direction = new THREE.Vector3().subVectors(playerPos, position).normalize();
+                            position.add(direction.multiplyScalar(1.5)); // Stand 1.5 units away
+                        
+                            // Set movement target
+                            movementComponent.targetPosition.copy(position);
+                            movementComponent.isMoving = true;
+                            
+                            // Store the target entity and action for when we reach it
+                            movementComponent.targetEntity = entity;
+                            movementComponent.targetAction = action.handler;
+                            
+                            // Save original onReachTarget handler
+                            const originalOnReachTarget = movementComponent.onReachTarget;
+                            
+                            // Set custom onReachTarget handler
+                            movementComponent.onReachTarget = () => {
+                                console.log(`Player reached ${interactableComponent.type}, executing ${action.handler}`);
+                                
+                                // Execute the appropriate handler based on the action
+                                switch (action.handler) {
+                                    case 'examineObject':
+                                        // Display a message about the object
+                                        console.log(`Examining ${interactableComponent.type}`);
+                                        // You would typically show a UI message here
+                                        break;
+                                        
+                                    case 'chopTree':
+                                        console.log('Chopping tree');
+                                        // Implement woodcutting logic
+                                        break;
+                                        
+                                    case 'mineRock':
+                                        console.log('Mining rock');
+                                        // Implement mining logic
+                                        break;
+                                        
+                                    default:
+                                        console.log(`Unknown action handler: ${action.handler}`);
+                                }
+                                
+                                // Clear target entity and action
+                                movementComponent.targetEntity = null;
+                                movementComponent.targetAction = null;
+                                
+                                // Restore original handler
+                                movementComponent.onReachTarget = originalOnReachTarget;
+                        };
+                        
+                            // Emit movement to server
+                            if (this.socket) {
+                                this.socket.emit('update position', {
+                                    playerId: playerComponent.playerId,
+                                    targetPosition: {
+                                        x: movementComponent.targetPosition.x,
+                                        y: movementComponent.targetPosition.y,
+                                        z: movementComponent.targetPosition.z
+                                    }
+                                });
+                            }
+                        }
+                    }
+            });
+        }
+        
+        // Add walk here option
+        menuItems.push({ separator: true });
+        menuItems.push({
+            label: 'Walk here',
+            action: (target) => {
+                // Get player components
+                const playerComponent = localPlayerEntity.getComponent('PlayerComponent');
+                const movementComponent = localPlayerEntity.getComponent('MovementComponent');
+                
+                if (!movementComponent) {
+                    console.error('Local player has no movement component');
+                    return;
+                }
+                
+                // Set target position
+                movementComponent.targetPosition.copy(target);
+                movementComponent.targetPosition.y = 0; // Keep at ground level
+                movementComponent.isMoving = true;
+                
+                // Clear any target entity/action
+                movementComponent.targetEntity = null;
+                movementComponent.targetAction = null;
+                
+                // Emit movement to server
+                if (this.socket) {
+                    this.socket.emit('update position', {
+                        playerId: playerComponent.playerId,
+                        targetPosition: {
+                            x: movementComponent.targetPosition.x,
+                            y: movementComponent.targetPosition.y,
+                            z: movementComponent.targetPosition.z
+                        }
+                    });
+                }
+            }
+        });
+        
+        // Add cancel option
+        menuItems.push({ separator: true });
+        menuItems.push({
+            label: 'Cancel',
+            action: () => {
+                // Do nothing, menu will close automatically
+            }
+        });
+        
+        // Show the context menu
+        this.contextMenuManager.showMenu(x, y, menuItems, targetPoint);
+    }
+}
+    
+    /**
+     * Show context menu for player
+     * @param {number} x - X position for menu
+     * @param {number} y - Y position for menu
+     * @param {PlayerComponent} playerComponent - The player component
+     * @param {Entity} playerEntity - The player entity
+     * @param {THREE.Vector3} targetPoint - The 3D point that was clicked
+     */
     showPlayerContextMenu(x, y, playerComponent, playerEntity, targetPoint) {
         // Find local player entity
         const localPlayerEntity = this.world.entities.find(entity => 
@@ -481,3 +662,4 @@ export class ContextMenuSystem extends System {
         this.world = world;
     }
 }
+
