@@ -15,7 +15,6 @@ import { InventorySystem } from './ecs/systems/index.js';
 import { SkillsSystem } from './ecs/systems/index.js';
 import { InventoryComponent, CharacterControllerComponent } from './ecs/components/index.js'; // Added CharacterControllerComponent
 import { SkillsComponent } from './ecs/components/index.js';
-import { updatePlayerEntityMeshes } from './ecs/playerEntityHelper.js';
 import { initDebugModule } from './debug.js';
 
 
@@ -34,9 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const scene = getScene();
     const camera = getCamera(); // Added for completeness, though not directly used in color logic yet
 
-    // Color Picker Element
-    const colorPicker = document.getElementById('player-color-picker');
-    
     // Listen for when the local player ID is assigned by the network module
     console.log("[App.js] Setting up 'local-player-id-assigned' event listener...");
     document.addEventListener('local-player-id-assigned', (event) => {
@@ -65,32 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initNetwork();
     const socket = getSocket();
 
-    // NEW: Event listener for the color picker
-    if (colorPicker && socket) {
-        colorPicker.addEventListener('input', (event) => {
-            const newColor = event.target.value;
-            const localPlayerId = getLocalPlayerId();
-            console.log(`[App.js Color Picker] Local Player ID: ${localPlayerId}, New Color: ${newColor}`);
 
-            if (localPlayerId && playerEntities.has(localPlayerId)) {
-                const localPlayerEntity = playerEntities.get(localPlayerId);
-                const playerComponent = localPlayerEntity.getComponent('PlayerComponent'); // Get PlayerComponent
-                // const meshComponent = localPlayerEntity.getComponent('MeshComponent'); // No longer needed here for local player
-                
-                if (playerComponent) {
-                    console.log(`[App.js Color Picker] Setting desiredColor to ${newColor} for local player.`);
-                    playerComponent.desiredColor = newColor;
-                    playerComponent.colorNeedsUpdate = true;
-                } else {
-                    console.error(`[App.js Color Picker] PlayerComponent not found for local player ${localPlayerId}`);
-                }
-
-                // Emit event to server
-                socket.emit('player:updateColor', { playerId: localPlayerId, color: newColor });
-            }
-        });
-    }
-    
     // Initialize chat system
     initChat(socket);
     
@@ -152,11 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (transform && player.position) {
                     transform.position.set(player.position.x, player.position.y, player.position.z);
                 }
-                // Update color if provided
-                // const meshComponent = playerEntity.getComponent('MeshComponent'); // Already declared below for local player
-                // if (meshComponent && meshComponent.mesh && meshComponent.mesh.material && player.color) {
-                //     meshComponent.mesh.material.color.set(player.color);
-                // }
+      
                 if (isLocal && !playerEntity.getComponent(InventoryComponent)) {
                     console.warn(`[App.js 'players-list'] Local player ${player.id} was missing InventoryComponent. Adding it now.`);
                     playerEntity.addComponent(new InventoryComponent());
@@ -167,7 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     playerId: player.id,
                     username: player.username,
                     isLocalPlayer: isLocal,
-                    color: player.color || '#3498db', // Use server color or default
                     position: player.position,
                     isMoving: player.isMoving || false // Include animation state from server
                 });
@@ -183,8 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const localPlayerEntityForUpdate = playerEntities.get(player.id);
                 if (localPlayerEntityForUpdate) {
                     const playerComp = localPlayerEntityForUpdate.getComponent('PlayerComponent');
-                    // const meshComp = localPlayerEntityForUpdate.getComponent('MeshComponent'); // No longer needed here
-                    
+                 
                     if (playerComp && player.color) {
                         console.log(`[App.js Local Player Init - players-list] Setting desiredColor to ${player.color}.`);
                         playerComp.desiredColor = player.color;
@@ -275,30 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`[App.js 'player-joined'] Total entities in world: ${world.entities.length}`);
         }
 
-        // If this is the local player and color is provided, update the color picker and mesh
-        if (isLocal) {
-            console.log(`[App.js Local Player Init - player-joined] ID: ${player.id}, Received Color: ${player.color}`);
-            const localPlayerEntityForUpdate = playerEntities.get(player.id);
-            if (localPlayerEntityForUpdate) {
-                const playerComp = localPlayerEntityForUpdate.getComponent('PlayerComponent');
-                // const meshComp = localPlayerEntityForUpdate.getComponent('MeshComponent'); // No longer needed here
-
-                if (playerComp && player.color) {
-                    console.log(`[App.js Local Player Init - player-joined] Setting desiredColor to ${player.color}.`);
-                    playerComp.desiredColor = player.color;
-                    playerComp.colorNeedsUpdate = true;
-                } else {
-                    console.error(`[App.js Local Player Init - player-joined] PlayerComponent or player.color missing for local player ${player.id}. Player color: ${player.color}`);
-                }
-            } else {
-                console.error(`[App.js Local Player Init - player-joined] Local player entity ${player.id} not found in map.`);
-            }
-
-            if (colorPicker && player.color) {
-                console.log(`[App.js Local Player Init - player-joined] Setting color picker to ${player.color}`);
-                colorPicker.value = player.color;
-            }
-        }
+   
     });
     
     // Handle player left
@@ -326,10 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (localPlayerEntity) {
             const inventoryComponent = localPlayerEntity.getComponent('InventoryComponent');
             if (inventoryComponent) {
-                // console.log('[App.js] Found InventoryComponent, updating slots with received data');
                 inventoryComponent.slots = inventoryData; // Directly replace slots
-                // console.log('[App.js] Local player inventory initialized:', JSON.stringify(inventoryComponent.slots));
-                // Dispatch event for UI refresh
                 document.dispatchEvent(new CustomEvent('inventory-display-update'));
             } else {
                 console.error('[App.js] Local player entity does not have InventoryComponent, adding it now');
@@ -346,9 +285,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle local player inventory changes (after pickup, drop, move)
     document.addEventListener('local-inventory-changed', (event) => {
         const updateData = event.detail; // { inventory: newInventoryArray, item: optionalPickedUpItem, message: statusMessage }
-        // console.log("[App.js] 'local-inventory-changed' event received. Detail:", updateData);
+    
         const localId = getLocalPlayerId();
-        // console.log("[App.js] 'local-inventory-changed': localId is:", localId);
+   
 
         // Show status message if available
         if (updateData.message) {
@@ -382,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Use string lookup for component to be consistent
             const inventoryComponent = localPlayerEntity.getComponent('InventoryComponent');
             if (inventoryComponent) {
-                // console.log('[App.js] Updating inventory with:', updateData.inventory);
+            
                 // Check if we're getting a full inventory or just updates
                 if (Array.isArray(updateData.inventory)) {
                     inventoryComponent.slots = updateData.inventory; // Update with the new full inventory
@@ -391,10 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     inventoryComponent.slots[updateData.slotIndex] = updateData.item || null;
                 }
                 
-                // console.log('[App.js] Local player inventory updated:', JSON.stringify(inventoryComponent.slots));
-                if (updateData.item) {
-                    // console.log('[App.js] Item involved in update:', updateData.item.name);
-                }
+              
                 // Dispatch event for UI refresh with slight delay to ensure state is updated
                 setTimeout(() => {
                     document.dispatchEvent(new CustomEvent('inventory-display-update'));
@@ -447,14 +383,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle a single item being removed from the world
     document.addEventListener('world-item-removed', (event) => {
         const { uuid } = event.detail;
-        // console.log('Received world item removed (document event):', uuid);
         removeWorldItemFromScene(uuid);
     });
     
     // Socket event for world item removed
     if (socket) {
         socket.on('item-removed', (uuid) => {
-            // console.log('Received world item removed (socket event):', uuid);
             removeWorldItemFromScene(uuid);
         });
     }
@@ -505,15 +439,13 @@ document.addEventListener('DOMContentLoaded', () => {
             gltfPath: itemData.gltfPath
         });
         worldItemEntities.set(itemData.uuid, itemEntity);
-        // console.log('World item entity added:', itemData.uuid);
+
     }
     
     // Handle trade requests
     document.addEventListener('trade-request-received', (event) => {
         const data = event.detail;
         const localId = getLocalPlayerId();
-        
-        // console.log('[App.js] Received trade request:', data);
         
         // Find local player entity
         const localPlayerEntity = playerEntities.get(localId);
@@ -530,7 +462,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // Handle the trade request
-        // console.log('[App.js] Forwarding trade request to handleTradeRequest');
         handleTradeRequest(
             {
                 fromPlayerId: data.fromPlayerId,
@@ -550,55 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
         handleTradeRequestResponse(data);
     });
     
-    // NEW: Handle player color changed event from server (for other players)
-    if (socket) {
-        socket.on('player:colorChanged', (data) => {
-            // console.log('[App.js] Received player:colorChanged:', data);
-            const { id, color } = data; // This 'id' is the socket ID of the player whose color changed
-            const localId = getLocalPlayerId();
 
-            // Update color for remote players
-            if (id !== localId && playerEntities.has(id)) {
-                const playerEntity = playerEntities.get(id);
-                const meshComponent = playerEntity.getComponent('MeshComponent');
-                const playerComponent = playerEntity.getComponent('PlayerComponent'); // Get PlayerComponent for remote player
-
-                if (meshComponent && meshComponent.mesh) {
-                    // console.log(`[App.js player:colorChanged] Applying color ${color} to remote player ${id}'s mesh.`);
-                    // Check if mesh is a Group (which is the case for player entities)
-                    if (meshComponent.mesh.type === 'Group' && meshComponent.mesh.children.length > 0) {
-                        // The actual mesh with material is the first child of the group
-                        const actualMesh = meshComponent.mesh.children[0];
-                        if (actualMesh && actualMesh.material) {
-                            actualMesh.material.color.set(color);
-                            // console.log(`[App.js player:colorChanged] Successfully updated remote player ${id}'s mesh color to ${color}`);
-                        } else {
-                            console.error(`[App.js player:colorChanged] Player mesh child or its material not found for remote player ${id}`);
-                        }
-                    } 
-                    // Also handle the case where mesh might be a direct Mesh (not in a Group)
-                    else if (meshComponent.mesh.material) {
-                        meshComponent.mesh.material.color.set(color);
-                        console.log(`[App.js player:colorChanged] Successfully updated remote player ${id}'s mesh color directly to ${color}`);
-                    } else {
-                        console.error(`[App.js player:colorChanged] Mesh material not found for remote player ${id}`);
-                    }
-                }
-                // Optionally, update the PlayerComponent's 'color' or 'desiredColor' field for remote players too, for consistency
-                if (playerComponent) {
-                    playerComponent.color = color; // Or desiredColor, depending on how you want to manage it for remote players
-                    playerComponent.desiredColor = color;
-                    // No need to set colorNeedsUpdate for remote players if RenderSystem only acts on local player's flag,
-                    // or if direct update is preferred for remotes.
-                }
-            } else {
-                // If id === localId, this event is an echo of our own change. 
-                // The local player's color should already be handled by the color picker input event and RenderSystem.
-                // Or, if playerEntities.has(id) is false, the player is not known.
-                console.warn(`[App.js player:colorChanged] Skipped color update for ${id}. Is local: ${id === localId}, Exists: ${playerEntities.has(id)}`);
-            }
-        });
-    }
 
     // Main animation loop
     function animate() {
@@ -607,8 +490,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update all systems
         world.update(performance.now() / 1000);
         
-        // Ensure player entities have proper userData for raycasting
-        updatePlayerEntityMeshes(world);
     }
     
     // Initialize debug module

@@ -556,25 +556,25 @@ function updatePlayerSelect(players) {
     }
 }
 
-    /**
-     * Update the item select dropdown with available items
-     */
-    function updateItemSelect() {
-        const select = document.getElementById('item-select');
+/**
+ * Update the item select dropdown with available items
+ */
+function updateItemSelect() {
+    const select = document.getElementById('item-select');
 
-        // Clear existing options except the first one
-        while (select.options.length > 1) {
-            select.remove(1);
-        }
-
-        // Add options for each available item
-        availableItems.forEach(item => {
-            const option = document.createElement('option');
-            option.value = item.id;
-            option.textContent = `${item.name} (${item.id})`;
-            select.appendChild(option);
-        });
+    // Clear existing options except the first one
+    while (select.options.length > 1) {
+        select.remove(1);
     }
+
+    // Add options for each available item
+    availableItems.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.id;
+        option.textContent = `${item.name} (${item.id})`;
+        select.appendChild(option);
+    });
+}
 
 /**
  * Update the world items list

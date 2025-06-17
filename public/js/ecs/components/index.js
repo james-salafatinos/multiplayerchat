@@ -3,7 +3,6 @@
 //reexoirts in ./components, e.g. chat bubble, mesh, etc.
 export { MeshComponent } from './meshComponent.js';
 export { RotationComponent } from './rotationComponent.js';
-export { LightComponent } from './lightComponent.js';
 
 export { PlayerComponent } from './playerComponent.js';
 export { CharacterControllerComponent } from './characterControllerComponent.js';

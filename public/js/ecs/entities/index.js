@@ -12,7 +12,6 @@ export { createPlayerEntity } from './createPlayerEntity.js';
 
 //World Entities
 export { createCubeEntity } from './createCubeEntity.js';
-export { createLightEntity } from './createLightEntity.js';
 export { createGroundEntity } from './createGroundEntity.js';
 
 
