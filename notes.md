@@ -8,7 +8,7 @@
 
 [ ] Combat system/health system/attack rolls, fight a chicken, that drops feathers, bones, and sometimes eggs
     - Including the AI pathing for the chicken roaming around
-
+[ ] Minimap
 
 # Fixes
 [ ] Make sure EntityID actually works or does something - why dont players have EntityID's in the debug screen?

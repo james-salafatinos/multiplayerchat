@@ -6,13 +6,15 @@ import { initChat } from './chat.js';
 import { handleTradeRequest, handleTradeRequestResponse } from './trade/index.js';
 import { initAdminPanel } from './admin/adminPanel.js';
 import { World } from './ecs/core/index.js';
-import { createCubeEntity, createGroundEntity, createPlayerEntity } from './ecs/entities/index.js';
+import { createCubeEntity, createPlayerEntity } from './ecs/entities/index.js';
 import { createBasicItemEntity } from './ecs/entities/index.js';
+import { assetLoader } from './utils/assetLoader.js';
 
 import { RenderSystem, RotationSystem, MovementSystem, CharacterSystem } from './ecs/systems/index.js'; // Added CharacterSystem
 import { CameraSystem, ChatBubbleSystem, ContextMenuSystem  } from './ecs/systems/index.js';
 import { InventorySystem } from './ecs/systems/index.js';
 import { SkillsSystem } from './ecs/systems/index.js';
+import { ChunkSystem } from './ecs/systems/index.js';
 import { InventoryComponent, CharacterControllerComponent } from './ecs/components/index.js'; // Added CharacterControllerComponent
 import { SkillsComponent } from './ecs/components/index.js';
 import { initDebugModule } from './debug.js';
@@ -86,8 +88,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Create a cube entity using ECS
     const cube = createCubeEntity(world, { position: { x: 0, y: 1, z: 0 } });
     
-    // Create a ground plane for players to move on
-    const ground = createGroundEntity(world, { width: 20, height: 20 });
+    // Preload essential assets for chunk system
+    const essentialAssets = [
+        '/models/ground/ground.glb',
+        '/models/rocks/rocks_large.glb',
+        '/models/trees/tree-small.glb'
+    ];
+    
+    console.log('Preloading essential chunk assets...');
+    assetLoader.preloadAssets(essentialAssets).then(() => {
+        console.log('Essential chunk assets preloaded successfully');
+    }).catch(error => {
+        console.error('Error preloading chunk assets:', error);
+    });
     
     // World items will be created from server data
     
@@ -101,6 +114,14 @@ document.addEventListener('DOMContentLoaded', () => {
     world.registerSystem(new ContextMenuSystem(socket));
     world.registerSystem(new SkillsSystem(socket));
     world.registerSystem(new CharacterSystem()); // Register CharacterSystem
+    
+    // Register ChunkSystem with configuration options
+    const chunkSystem = new ChunkSystem({
+        chunkSize: 32,  // 32x32 grid for each chunk
+        loadDistance: 1 // Load chunks 1 away from player in each direction
+    });
+    world.registerSystem(chunkSystem);
+    chunkSystem.init(world); // Initialize with initial chunk at (0,0)
     
     // Set up initial camera position for isometric view
     camera.position.set(15, 10, 15); // Position for 45-degree isometric view

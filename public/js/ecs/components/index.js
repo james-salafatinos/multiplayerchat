@@ -14,3 +14,4 @@ export { InventoryComponent } from './inventoryComponent.js';
 export { InteractableComponent } from './interactableComponent.js';
 export { ItemComponent } from './itemComponent.js';
 export { SkillsComponent } from './skillsComponent.js';
+export { ChunkComponent } from './chunkComponent.js';
