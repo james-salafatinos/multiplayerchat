@@ -21,14 +21,25 @@ export function loadItems() {
     const rawData = fs.readFileSync(itemsPath);
     items = JSON.parse(rawData);
     
+    console.log('[ItemManager] Raw items loaded from file:', items);
+    
     itemsById.clear();
     for (const item of items) {
       if (itemsById.has(item.id)) {
         console.warn(`[ItemManager] Duplicate item ID found: ${item.id}. Check items.json.`);
       }
       itemsById.set(item.id, item);
+      console.log(`[ItemManager] Added item: ${item.id} - ${item.name} (useType: ${item.useType || 'undefined'})`);
     }
     console.log(`[ItemManager] Successfully loaded ${items.length} items.`);
+    
+    // Log the default item (ID 0) specifically
+    const defaultItem = itemsById.get('0');
+    if (defaultItem) {
+      console.log('[ItemManager] Default item (ID 0):', defaultItem);
+    } else {
+      console.warn('[ItemManager] Default item (ID 0) not found!');
+    }
   } catch (error) {
     console.error('[ItemManager] Error loading items:', error);
     // Depending on how critical items are, you might want to throw the error

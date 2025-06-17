@@ -12,13 +12,38 @@ import { getItemById } from '../utils/itemManager.js';
  * @param {Map} worldItems - The map of world items
  */
 export function initInventoryHandlers(socket, io, players, worldItems) {
+  // Helper function to refresh item data from latest definitions
+  function refreshItemData(item) {
+    if (!item) return null; // Skip empty slots
+    
+    // Get the latest item definition
+    const latestItemDef = getItemById(item.id);
+    if (latestItemDef) {
+      // Update with latest properties from item definition
+      return {
+        ...item,
+        name: latestItemDef.name,
+        description: latestItemDef.description,
+        useType: latestItemDef.useType || 'Use',
+        inventoryIconPath: latestItemDef.inventoryIconPath,
+        type: latestItemDef.type
+      };
+    }
+    return item; // Keep original if no definition found
+  }
   // Handle explicit inventory data request
   socket.on('request inventory', (data) => {
     console.log(`Received inventory request from player ${socket.id}`, data);
     const player = players.get(socket.id);
     if (player && player.inventory) {
-      console.log(`Sending inventory data to player ${socket.id}:`, player.inventory);
-      socket.emit('player inventory', player.inventory);
+      // Refresh item data from latest definitions before sending
+      const refreshedInventory = player.inventory.map(item => refreshItemData(item));
+      
+      // Update player's inventory with refreshed data
+      player.inventory = refreshedInventory;
+      
+      console.log(`Sending refreshed inventory data to player ${socket.id}:`, refreshedInventory);
+      socket.emit('player inventory', refreshedInventory);
     } else {
       console.warn(`Inventory request received but player ${socket.id} not found or has no inventory`);
     }

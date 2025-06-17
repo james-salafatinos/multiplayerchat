@@ -28,13 +28,14 @@ export function createItemEntity(world, options = {}) {
     const config = {
         uuid: options.uuid || null, // Unique identifier for world items
         id: options.id || 0,
-        name: options.name || 'Default Item',
-        description: options.description || 'A basic item',
+        name: options.name || 'Cake',
+        description: options.description || 'A delicious cake',
         position: options.position || new THREE.Vector3(0, 0, 0),
         color: options.color || 0xffaa00,
         size: options.size || 0.3,
         isPickupable: options.isPickupable !== undefined ? options.isPickupable : true,
         gltfPath: options.gltfPath || null,
+        useType: options.useType || 'Use', // Default to 'Use' if not specified
         ...options
     };
     

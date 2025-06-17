@@ -42,6 +42,12 @@ export class ContextMenuManager {
         // Prevent default context menu
         event.preventDefault();
         
+        // Check if inventory context menu is active
+        if (window.suppressWorldContextMenu) {
+            console.log('World context menu suppressed by inventory context menu');
+            return;
+        }
+        
         // Get mouse position
         const x = event.clientX;
         const y = event.clientY;

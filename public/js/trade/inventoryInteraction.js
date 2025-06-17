@@ -262,33 +262,47 @@ export function removeInventoryContextMenu() {
  * @param {MouseEvent} event - The context menu event
  */
 export function handleInventoryContextMenu(event) {
+    // Prevent the default context menu
     event.preventDefault();
+
+    // Get the slot index from the clicked element
+    const slotElement = event.currentTarget;
+    const slotIndex = parseInt(slotElement.dataset.slotIndex, 10);
+
+    // Find the item display element within the slot
+    const itemDisplay = slotElement.querySelector('.inventory-item');
+
+    // If there's no item display in this slot, don't show the menu
+    if (!itemDisplay) return;
+
+    // Get item data from the dataset attributes
+    console.log('Raw dataset attributes:', itemDisplay.dataset);
     
-    // Check if we're in an active trade
-    if (!window.activeTrade || window.activeTrade.status !== 'active') return;
+    // Extract all attributes from dataset with detailed logging
+    const itemId = itemDisplay.dataset.id;
+    const itemName = itemDisplay.dataset.name;
+    const itemDesc = itemDisplay.dataset.description;
+    const itemUseType = itemDisplay.dataset.useType;
     
-    // Get the slot index from the element's dataset
-    const slotIndex = parseInt(event.currentTarget.dataset.slotIndex);
-    if (isNaN(slotIndex)) return;
+    console.log('Extracted item data:', {
+        id: itemId,
+        name: itemName,
+        description: itemDesc,
+        useType: itemUseType
+    });
     
-    // Find local player entity to get inventory
-    const world = window.gameWorld;
-    if (!world) return;
+    const item = {
+        id: itemId,
+        name: itemName,
+        description: itemDesc,
+        useType: itemUseType || 'Use'
+    };
     
-    const localPlayerEntity = world.entities.find(entity => 
-        entity.active && 
-        entity.hasComponent('PlayerComponent') && 
-        entity.getComponent('PlayerComponent').isLocalPlayer
-    );
-    
-    if (!localPlayerEntity || !localPlayerEntity.hasComponent('InventoryComponent')) return;
-    
-    const inventoryComponent = localPlayerEntity.getComponent('InventoryComponent');
-    const item = inventoryComponent.slots[slotIndex];
-    
+    console.log('Final context menu item object:', item);
+
     // If there's no item in this slot, don't show the menu
     if (!item) return;
-    
+
     // Remove any existing context menu
     const existingMenu = document.getElementById('inventory-context-menu');
     if (existingMenu) {
@@ -312,37 +326,96 @@ export function handleInventoryContextMenu(event) {
         boxShadow: '0 2px 10px rgba(0, 0, 0, 0.5)'
     });
     
-    // Create menu item for adding to trade
-    const addToTradeOption = document.createElement('div');
-    addToTradeOption.textContent = 'Add to Trade';
-    Object.assign(addToTradeOption.style, {
+    // Check if we're in an active trade
+    if (window.activeTrade && window.activeTrade.status === 'active') {
+        // Create menu item for adding to trade
+        const addToTradeOption = document.createElement('div');
+        addToTradeOption.textContent = 'Add to Trade';
+        Object.assign(addToTradeOption.style, {
+            padding: '5px 10px',
+            cursor: 'pointer',
+            borderRadius: '2px'
+        });
+        
+        // Highlight on hover
+        addToTradeOption.addEventListener('mouseover', () => {
+            addToTradeOption.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+        });
+        addToTradeOption.addEventListener('mouseout', () => {
+            addToTradeOption.style.backgroundColor = 'transparent';
+        });
+        
+        // Add click handler to offer the item
+        addToTradeOption.addEventListener('click', () => {
+            offerItem(slotIndex, item);
+            contextMenu.remove();
+        });
+        
+        contextMenu.appendChild(addToTradeOption);
+    }
+    
+    // Add item use option based on useType
+    const useOption = document.createElement('div');
+    // Determine the action text based on item's useType property
+    const useAction = item.useType || 'Use'; // Default to "Use" if useType is not specified
+    useOption.textContent = useAction;
+    
+    Object.assign(useOption.style, {
         padding: '5px 10px',
         cursor: 'pointer',
         borderRadius: '2px'
     });
     
     // Highlight on hover
-    addToTradeOption.addEventListener('mouseover', () => {
-        addToTradeOption.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+    useOption.addEventListener('mouseover', () => {
+        useOption.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
     });
-    addToTradeOption.addEventListener('mouseout', () => {
-        addToTradeOption.style.backgroundColor = 'transparent';
+    useOption.addEventListener('mouseout', () => {
+        useOption.style.backgroundColor = 'transparent';
     });
     
-    // Add click handler to offer the item
-    addToTradeOption.addEventListener('click', () => {
-        offerItem(slotIndex, item);
+    // Add click handler to use the item
+    useOption.addEventListener('click', () => {
+        useItem(slotIndex, item);
         contextMenu.remove();
     });
     
-    contextMenu.appendChild(addToTradeOption);
+    contextMenu.appendChild(useOption);
+    
+    // Add a Cancel option (always present)
+    const cancelOption = document.createElement('div');
+    cancelOption.textContent = 'Cancel';
+    Object.assign(cancelOption.style, {
+        padding: '5px 10px',
+        cursor: 'pointer',
+        borderRadius: '2px'
+    });
+    
+    // Highlight on hover
+    cancelOption.addEventListener('mouseover', () => {
+        cancelOption.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+    });
+    cancelOption.addEventListener('mouseout', () => {
+        cancelOption.style.backgroundColor = 'transparent';
+    });
+    
+    // Add click handler to close the menu
+    cancelOption.addEventListener('click', () => {
+        contextMenu.remove();
+    });
+    
+    contextMenu.appendChild(cancelOption);
     document.body.appendChild(contextMenu);
+    
+    // Prevent the Three.js world context menu
+    window.suppressWorldContextMenu = true;
     
     // Close menu when clicking elsewhere
     const closeContextMenu = (e) => {
         if (!contextMenu.contains(e.target)) {
             contextMenu.remove();
             document.removeEventListener('click', closeContextMenu);
+            window.suppressWorldContextMenu = false;
         }
     };
     
@@ -351,3 +424,78 @@ export function handleInventoryContextMenu(event) {
         document.addEventListener('click', closeContextMenu);
     }, 10);
 }
+
+/**
+ * Use an item from the inventory
+ * @param {number} slotIndex - Index of the slot in inventory
+ * @param {Object} item - The item to use
+ */
+export function useItem(slotIndex, item) {
+    console.log(`Using item: ${item.name} from slot ${slotIndex}`);
+    
+    // Get the action based on useType
+    const action = item.useType || 'Use';
+    
+    // Show a message about using the item
+    const message = `${action}ing ${item.name}...`;
+    showItemUseMessage(message);
+    
+    // If connected to server, send item use event
+    const socket = window.socket;
+    if (socket) {
+        socket.emit('use item', {
+            slotIndex: slotIndex,
+            itemId: item.id
+        });
+    }
+}
+
+/**
+ * Display a message when using an item
+ * @param {string} message - The message to display
+ */
+function showItemUseMessage(message) {
+    // Check if a status message container exists
+    let statusContainer = document.getElementById('status-message-container');
+    
+    // If not, create one
+    if (!statusContainer) {
+        statusContainer = document.createElement('div');
+        statusContainer.id = 'status-message-container';
+        Object.assign(statusContainer.style, {
+            position: 'fixed',
+            bottom: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            color: 'white',
+            padding: '10px 15px',
+            borderRadius: '5px',
+            fontSize: '16px',
+            zIndex: '2000',
+            textAlign: 'center',
+            transition: 'opacity 0.3s ease',
+            opacity: '0'
+        });
+        document.body.appendChild(statusContainer);
+    }
+    
+    // Set the message
+    statusContainer.textContent = message;
+    statusContainer.style.opacity = '1';
+    
+    // Hide after 3 seconds
+    setTimeout(() => {
+        statusContainer.style.opacity = '0';
+        setTimeout(() => {
+            if (statusContainer.parentNode) {
+                statusContainer.parentNode.removeChild(statusContainer);
+            }
+        }, 300);
+    }, 3000);
+}
+
+// Initialize the inventory context menu on page load
+document.addEventListener('DOMContentLoaded', () => {
+    setupInventoryContextMenu();
+});

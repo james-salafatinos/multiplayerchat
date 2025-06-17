@@ -351,7 +351,8 @@ export function initSocketHandlers(io, players, worldItems) {
           tradeable: defaultItem.tradeable,
           stackable: defaultItem.stackable,
           maxStack: defaultItem.maxStack,
-          type: defaultItem.type
+          type: defaultItem.type,
+          useType: defaultItem.useType
         };
         
         // Save to database if authenticated
@@ -428,9 +429,37 @@ export function initSocketHandlers(io, players, worldItems) {
       }
     }
     
-    // Explicitly send the player's inventory
-    console.log(`Sending inventory to player ${socket.id}:`, newPlayer.inventory);
-    socket.emit('player inventory', newPlayer.inventory);
+    // Send initial inventory data to client
+    if (newPlayer.inventory) {
+      // Refresh item data from latest definitions before sending
+      const refreshedInventory = newPlayer.inventory.map(item => {
+        if (!item) return null; // Skip empty slots
+        
+        // Get the latest item definition
+        const latestItemDef = getItemById(item.id);
+        if (latestItemDef) {
+          // Update with latest properties from item definition
+          return {
+            ...item,
+            name: latestItemDef.name,
+            description: latestItemDef.description,
+            useType: latestItemDef.useType || 'Use',
+            inventoryIconPath: latestItemDef.inventoryIconPath,
+            type: latestItemDef.type
+          };
+        }
+        return item; // Keep original if no definition found
+      });
+      
+      // Update player's inventory with refreshed data
+      newPlayer.inventory = refreshedInventory;
+      
+      // Send to client
+      socket.emit('inventory update', {
+        inventory: refreshedInventory,
+        message: 'Inventory loaded with latest item definitions'
+      });
+    }
     
     // Update user count for all clients
     io.emit('user count', players.size);

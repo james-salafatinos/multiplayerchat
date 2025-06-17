@@ -24,13 +24,14 @@ const gltfLoader = new GLTFLoader();
  * @returns {Entity} The created item entity
  */
 export function createDefaultItemEntity(world, options = {}) {
-    // Default options for the default item
+    // Default options for the default item (now Cake)
     const config = {
         id: 0,
-        name: 'Default Item',
-        description: 'The default item that every player starts with',
+        name: 'Cake',
+        description: 'A delicious cake that every player starts with.',
         ownerId: options.ownerId || null,
         slotIndex: options.slotIndex || 0,
+        useType: 'Eat',
         ...options
     };
     
@@ -44,7 +45,8 @@ export function createDefaultItemEntity(world, options = {}) {
         description: config.description,
         isPickupable: false, // Cannot be dropped
         ownerId: config.ownerId,
-        slotIndex: config.slotIndex
+        slotIndex: config.slotIndex,
+        useType: config.useType // Add the useType property
     }));
     
     // Add entity to world

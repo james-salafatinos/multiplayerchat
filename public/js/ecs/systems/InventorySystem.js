@@ -542,34 +542,6 @@ export class InventorySystem extends System {
             }
         }
         
-        return null;
-    }
-    
-    /**
-     * Handle inventory updates from the server
-     * @param {Object} data - The inventory update data
-     */
-    handleInventoryUpdate(data) {
-        // console.log('Received inventory update:', data);
-        
-        // Find player entity with matching ID
-        const playerEntity = this.world.entities.find(entity => 
-            entity.active && 
-            entity.hasComponent('PlayerComponent') && 
-            entity.getComponent('PlayerComponent').playerId === data.playerId
-        );
-        
-        if (!playerEntity) {
-            console.error(`Player entity with ID ${data.playerId} not found`);
-            return;
-        }
-        
-        // Ensure player has an inventory component
-        if (!playerEntity.hasComponent('InventoryComponent')) {
-            console.error('Player entity does not have an InventoryComponent');
-            return;
-        }
-        
         const inventoryComponent = playerEntity.getComponent('InventoryComponent');
         const playerComponent = playerEntity.getComponent('PlayerComponent');
         const isLocalPlayer = playerComponent.isLocalPlayer;
@@ -791,15 +763,21 @@ export class InventorySystem extends System {
     updateInventoryUI(inventoryComponent) {
         const slots = document.querySelectorAll('.inventory-slot');
         
+        console.log('[InventorySystem] Updating inventory UI with slots:', inventoryComponent.slots);
+        
         slots.forEach((slot, index) => {
             // Clear slot
             slot.innerHTML = '';
             slot.title = '';
             
+            // Set slot index as data attribute for context menu
+            slot.dataset.slotIndex = index.toString();
+            
             // Get item in this slot
             const item = inventoryComponent.slots[index];
             
             if (item) {
+                console.log(`[InventorySystem] Slot ${index} item:`, item);
                 // Create item display
                 const itemDisplay = document.createElement('div');
                 itemDisplay.className = 'inventory-item';
@@ -812,6 +790,14 @@ export class InventorySystem extends System {
                 itemDisplay.style.color = 'white';
                 itemDisplay.style.fontSize = '8px';
                 itemDisplay.style.overflow = 'hidden';
+                
+                // Store item data as attributes for context menu
+                itemDisplay.dataset.id = item.id;
+                itemDisplay.dataset.name = item.name;
+                itemDisplay.dataset.description = item.description;
+                if (item.useType) {
+                    itemDisplay.dataset.useType = item.useType;
+                }
                 
                 // Check if the item has a custom icon path
                 if (item.inventoryIconPath) {
@@ -871,6 +857,41 @@ export class InventorySystem extends System {
                 slot.appendChild(itemDisplay);
             }
         });
+        
+        // Add context menu listeners to all slots after rendering
+        this.setupInventoryContextMenu(slots);
+    }
+    
+    /**
+     * Set up context menu for inventory items
+     * @param {NodeList} slots - The inventory slots to attach listeners to
+     */
+    setupInventoryContextMenu(slots) {
+        // Import the handleInventoryContextMenu function if not already available
+        if (!window.handleInventoryContextMenu) {
+            // Use dynamic import to get the module
+            import('../../trade/inventoryInteraction.js').then(module => {
+                window.handleInventoryContextMenu = module.handleInventoryContextMenu;
+                this.attachContextMenuListeners(slots);
+            }).catch(error => {
+                console.error('Error importing inventoryInteraction module:', error);
+            });
+        } else {
+            this.attachContextMenuListeners(slots);
+        }
+    }
+    
+    /**
+     * Attach context menu listeners to inventory slots
+     * @param {NodeList} slots - The inventory slots to attach listeners to
+     */
+    attachContextMenuListeners(slots) {
+        slots.forEach(slot => {
+            // Remove any existing context menu listener to prevent duplicates
+            slot.removeEventListener('contextmenu', window.handleInventoryContextMenu);
+            // Add new context menu listener
+            slot.addEventListener('contextmenu', window.handleInventoryContextMenu);
+        });
     }
     
     /**
@@ -929,8 +950,9 @@ export class InventorySystem extends System {
             
             inventoryComponent.addItem({
                 id: 0,
-                name: 'Default Item',
-                description: 'The default item that every player starts with'
+                name: 'Cake',
+                description: 'A delicious cake that every player starts with.',
+                useType: 'Eat'
             });
             
             // Update UI if this is the local player
