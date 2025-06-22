@@ -13,6 +13,7 @@ import {
 } from '../components/index.js';
 import { getSocket } from '../../network.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import Logger from '../../utils/logger.js';
 
 // Create a loader instance to be reused
 const gltfLoader = new GLTFLoader();

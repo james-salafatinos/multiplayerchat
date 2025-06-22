@@ -5,6 +5,7 @@ import { System } from '../core/index.js';
 import * as THREE from 'three';
 import { getCamera, getRenderer } from '../../three-setup.js';
 import { InventoryComponent } from '../components/index.js';
+import Logger from '../../utils/logger.js';
 
 /**
  * Inventory System
@@ -31,9 +32,9 @@ export class InventorySystem extends System {
         
         // Listen for inventory display updates to refresh UI
         document.addEventListener('inventory-display-update', () => {
-            // console.log('[InventorySystem] Received inventory-display-update event.');
+            Logger.trace(Logger.LogCategories.SYSTEM, 'InventorySystem', 'Received inventory-display-update event.');
             if (!this.world) {
-                console.warn('[InventorySystem] inventory-display-update: this.world is not yet available.');
+                Logger.warn(Logger.LogCategories.SYSTEM, 'InventorySystem', 'inventory-display-update: this.world is not yet available.');
                 this.isItemBeingPickedUp = false; // Still release lock if world isn't ready, to prevent permanent lock
                 return;
             }
@@ -46,7 +47,7 @@ export class InventorySystem extends System {
 
             if (localPlayerEntity && localPlayerEntity.hasComponent('InventoryComponent')) {
                 const inventoryComponent = localPlayerEntity.getComponent('InventoryComponent');
-                // console.log('[InventorySystem] inventory-display-update: Found local player, inventory slots:', JSON.stringify(inventoryComponent.slots));
+                Logger.trace(Logger.LogCategories.PLAYER, 'InventorySystem', 'inventory-display-update: Found local player, inventory slots:', JSON.stringify(inventoryComponent.slots));
                 this.updateInventoryUI(inventoryComponent);
                 
                 // Make sure inventory panel is visible after an update
@@ -55,7 +56,7 @@ export class InventorySystem extends System {
                     inventoryContainer.classList.remove('hidden');
                 }
             } else {
-                console.warn('[InventorySystem] inventory-display-update: Local player or InventoryComponent not found.');
+                Logger.warn(Logger.LogCategories.PLAYER, 'InventorySystem', 'inventory-display-update: Local player or InventoryComponent not found.');
             }
             this.isItemBeingPickedUp = false; // Release lock after UI update or if player not found
         });
@@ -63,18 +64,18 @@ export class InventorySystem extends System {
         // Listen for socket events directly
         if (this.socket) {
             this.socket.on('pickup failure', (data) => {
-                console.log('Pickup failure:', data.message);
+                Logger.info(Logger.LogCategories.PLAYER, 'InventorySystem', 'Pickup failure:', data.message);
                 this.showStatusMessage(data.message || `Item was already picked up.`);
                 this.isItemBeingPickedUp = false;
             });
             
             // Listen for inventory updates from server
             this.socket.on('inventory update', (data) => {
-                // console.log('[InventorySystem] Received inventory update from server:', data);
+                Logger.debug(Logger.LogCategories.PLAYER, 'InventorySystem', 'Received inventory update from server:', data);
                 
                 // Find local player entity
                 if (!this.world) {
-                    console.warn('[InventorySystem] inventory update: this.world is not yet available.');
+                    Logger.warn(Logger.LogCategories.SYSTEM, 'InventorySystem', 'inventory update: this.world is not yet available.');
                     window.pendingInventory = data.inventory; // Store for later application
                     this.isItemBeingPickedUp = false;
                     return;
@@ -93,11 +94,11 @@ export class InventorySystem extends System {
                     // Handle different formats of inventory update
                     if (data.inventory) {
                         // Full inventory update
-                        // console.log('[InventorySystem] Updating full inventory:', data.inventory);
+                        Logger.debug(Logger.LogCategories.PLAYER, 'InventorySystem', 'Updating full inventory:', data.inventory);
                         inventoryComponent.slots = data.inventory;
                     } else if (data.action) {
                         // Action-based update (handled by handleInventoryUpdate)
-                        // console.log('[InventorySystem] Handling action-based update:', data.action);
+                        Logger.debug(Logger.LogCategories.PLAYER, 'InventorySystem', 'Handling action-based update:', data.action);
                         this.handleInventoryUpdate({
                             playerId: localPlayerEntity.getComponent('PlayerComponent').playerId,
                             action: data.action,
@@ -115,13 +116,13 @@ export class InventorySystem extends System {
                         });
                     } else if (data.item) {
                         // Direct item pickup update
-                        // console.log('[InventorySystem] Processing direct item pickup:', data.item);
+                        Logger.debug(Logger.LogCategories.PLAYER, 'InventorySystem', 'Processing direct item pickup:', data.item);
                         // Find first empty slot
                         const emptySlotIndex = inventoryComponent.slots.findIndex(slot => !slot);
                         if (emptySlotIndex !== -1) {
                             inventoryComponent.slots[emptySlotIndex] = data.item;
                         } else {
-                            console.warn('[InventorySystem] No empty slot found for item:', data.item.name);
+                            Logger.warn(Logger.LogCategories.PLAYER, 'InventorySystem', 'No empty slot found for item:', data.item.name);
                         }
                     }
                     
@@ -142,7 +143,7 @@ export class InventorySystem extends System {
                         }
                     }));
                 } else {
-                    console.warn('[InventorySystem] inventory update: Local player or InventoryComponent not found.');
+                    Logger.warn(Logger.LogCategories.PLAYER, 'InventorySystem', 'inventory update: Local player or InventoryComponent not found.');
                     window.pendingInventory = data.inventory; // Store for later application
                 }
                 
@@ -190,7 +191,7 @@ export class InventorySystem extends System {
     handleClick(event) {
         // Ignore clicks if we're already processing a pickup
         if (this.isItemBeingPickedUp) {
-            console.log('InventorySystem: Pickup attempt ignored: another pickup is in progress.');
+            Logger.debug(Logger.LogCategories.INPUT, 'InventorySystem', 'Pickup attempt ignored: another pickup is in progress.');
             return;
         }
         
@@ -226,17 +227,17 @@ export class InventorySystem extends System {
         const itemMeshes = itemEntities.map(entity => entity.getComponent('MeshComponent').mesh).filter(mesh => mesh);
 
         if (itemMeshes.length === 0) {
-            // console.log('InventorySystem: No item meshes found in the world to intersect with.');
+            Logger.trace(Logger.LogCategories.INPUT, 'InventorySystem', 'No item meshes found in the world to intersect with.');
             return;
         }
         
         // Find intersections with item meshes
         const itemIntersections = this.raycaster.intersectObjects(itemMeshes, true); // true for recursive
         
-        console.log(`InventorySystem: Raycaster found ${itemIntersections.length} intersections with item meshes.`);
+        Logger.debug(Logger.LogCategories.INPUT, 'InventorySystem', `Raycaster found ${itemIntersections.length} intersections with item meshes`);
 
         if (!localPlayerEntity) {
-            console.error('InventorySystem: Local player entity not found.');
+            Logger.error(Logger.LogCategories.PLAYER, 'InventorySystem', 'Local player entity not found.');
             return;
         }
         
@@ -247,22 +248,22 @@ export class InventorySystem extends System {
         if (itemIntersections.length > 0) {
             const closestIntersection = itemIntersections[0];
             const intersectedMesh = closestIntersection.object;
-            console.log('InventorySystem: Closest intersected mesh:', intersectedMesh.name, intersectedMesh.uuid);
+            Logger.debug(Logger.LogCategories.INPUT, 'InventorySystem', 'Closest intersected mesh:', intersectedMesh.name, intersectedMesh.uuid);
 
             // Find the entity associated with this mesh using userData
             const entityId = intersectedMesh.userData.entityId;
             if (!entityId) {
-                console.error('InventorySystem: Intersected mesh is missing userData.entityId.');
+                Logger.error(Logger.LogCategories.ENTITY, 'InventorySystem', 'Intersected mesh is missing userData.entityId.');
                 // Fallback or alternative search if needed, though userData is preferred
                 const altEntity = itemEntities.find(e => 
                     e.hasComponent('MeshComponent') && 
                     e.getComponent('MeshComponent').mesh === intersectedMesh
                 );
                 if (altEntity) {
-                    console.warn('InventorySystem: Found entity via direct mesh comparison (fallback). Consider ensuring userData.entityId is always set.');
+                    Logger.warn(Logger.LogCategories.ENTITY, 'InventorySystem', 'Found entity via direct mesh comparison (fallback). Consider ensuring userData.entityId is always set.');
                     // closestItemEntity = altEntity; // Uncomment if you want to use this fallback
                 } else {
-                    console.error('InventorySystem: Could not find entity for intersected mesh even with fallback.');
+                    Logger.error(Logger.LogCategories.ENTITY, 'InventorySystem', 'Could not find entity for intersected mesh even with fallback.');
                     return;
                 }
                 // For now, strictly require userData.entityId
@@ -272,10 +273,10 @@ export class InventorySystem extends System {
             const closestItemEntity = this.world.entities.find(e => e.id === entityId);
 
             if (!closestItemEntity) {
-                console.error(`InventorySystem: Could not find entity with ID '${entityId}' from mesh userData.`);
+                Logger.error(Logger.LogCategories.ENTITY, 'InventorySystem', `Could not find entity with ID '${entityId}' from mesh userData.`);
                 return;
             }
-            console.log('InventorySystem: Found entity for mesh via userData.entityId:', closestItemEntity.id);
+            Logger.debug(Logger.LogCategories.ENTITY, 'InventorySystem', 'Found entity for mesh via userData.entityId:', closestItemEntity.id);
 
             const itemTransform = closestItemEntity.getComponent('TransformComponent');
             const playerTransform = localPlayerEntity.getComponent('TransformComponent');
@@ -283,110 +284,56 @@ export class InventorySystem extends System {
             const itemComponent = closestItemEntity.getComponent('ItemComponent');
 
             if (!interactableComponent) {
-                console.error('InventorySystem: Intersected item is missing InteractableComponent. UUID:', itemComponent.uuid);
+                Logger.error(Logger.LogCategories.ENTITY, 'InventorySystem', 'Intersected item is missing InteractableComponent. UUID:', itemComponent.uuid);
                 return;
             }
             if (!itemComponent) {
-                console.error('InventorySystem: Intersected item is missing ItemComponent.');
+                Logger.error(Logger.LogCategories.ENTITY, 'InventorySystem', 'Intersected item is missing ItemComponent.');
                 return;
             }
             if (!playerTransform) {
-                console.error('InventorySystem: Local player is missing TransformComponent.');
+                Logger.error(Logger.LogCategories.PLAYER, 'InventorySystem', 'Local player is missing TransformComponent.');
                 return;
             }
             if (!itemTransform) {
-                console.error('InventorySystem: Intersected item is missing TransformComponent. UUID:', itemComponent.uuid);
+                Logger.error(Logger.LogCategories.ENTITY, 'InventorySystem', 'Intersected item is missing TransformComponent. UUID:', itemComponent.uuid);
                 return;
             }
 
-            console.log(`InventorySystem: Attempting interaction with ${itemComponent.name} (UUID: ${itemComponent.uuid})`);
+            Logger.info(Logger.LogCategories.PLAYER, 'InventorySystem', `Attempting interaction with ${itemComponent.name} (UUID: ${itemComponent.uuid})`);
 
             // Check range before attempting interaction
             const distance = playerTransform.position.distanceTo(itemTransform.position);
             const pickupRange = interactableComponent.range || 1.5;
-            console.log(`InventorySystem: Distance to item: ${distance.toFixed(2)}, Pickup range: ${pickupRange}`);
+            Logger.debug(Logger.LogCategories.PLAYER, 'InventorySystem', `Distance to item: ${distance.toFixed(2)}, Pickup range: ${pickupRange}`);
 
             if (distance > pickupRange) {
-                console.log(`InventorySystem: Too far from item (${distance.toFixed(2)} units). Must be within ${pickupRange} units.`);
+                Logger.info(Logger.LogCategories.PLAYER, 'InventorySystem', `Too far from item (${distance.toFixed(2)} units). Must be within ${pickupRange} units.`);
                 this.showStatusMessage(`Too far to pick up ${itemComponent.name}. Move closer.`);
                 return;
             }
 
             if (interactableComponent.onInteract) {
-                console.log(`InventorySystem: Calling onInteract for item: ${itemComponent.name} (UUID: ${itemComponent.uuid})`);
+                Logger.debug(Logger.LogCategories.PLAYER, 'InventorySystem', `Calling onInteract for item: ${itemComponent.name} (UUID: ${itemComponent.uuid})`);
                 this.isItemBeingPickedUp = true; // Set lock before calling onInteract
                 interactableComponent.onInteract(localPlayerEntity, closestItemEntity);
             } else {
-                console.warn('InventorySystem: Item is interactable but has no onInteract function. UUID:', itemComponent.uuid);
+                Logger.warn(Logger.LogCategories.ENTITY, 'InventorySystem', 'Item is interactable but has no onInteract function. UUID:', itemComponent.uuid);
             }
         } else {
-            // console.log('InventorySystem: No item intersections found on click.');
+            Logger.trace(Logger.LogCategories.INPUT, 'InventorySystem', 'No item intersections found on click.');
         }
     }
     
-    /**
-     * Pick up an item and add it to the player's inventory
-     * @param {Entity} playerEntity - The player entity
-     * @param {Entity} itemEntity - The item entity to pick up
-     */
-    // This method is now largely superseded by InteractableComponent.onInteract
-    // Kept for reference or if other local pre-checks are needed in future.
-    // pickupItem(playerEntity, itemEntity) {
-        // // Set pickup lock to prevent duplicate attempts
-        // this.isItemBeingPickedUp = true;
-        
-        // // Ensure player has an inventory component
-        // if (!playerEntity.hasComponent('InventoryComponent')) {
-        //     console.error('Player entity does not have an InventoryComponent');
-        //     this.isItemBeingPickedUp = false;
-        //     return;
-        // }
-        
-        // // Get player and item components
-        // const playerComponent = playerEntity.getComponent('PlayerComponent');
-        // const playerTransform = playerEntity.getComponent('TransformComponent');
-        // const itemTransform = itemEntity.getComponent('TransformComponent');
-        // const inventoryComponent = playerEntity.getComponent('InventoryComponent');
-        // const itemComponent = itemEntity.getComponent('ItemComponent');
-
-        // // Check if item is pickupable
-        // if (!itemComponent.isPickupable) {
-        //     console.log(`Item ${itemComponent.name} cannot be picked up`);
-        //     this.showStatusMessage(`${itemComponent.name} cannot be picked up`);
-        //     this.isItemBeingPickedUp = false;
-        //     return;
-        // }
-        
-        // // Check if player is close enough to the item (1 step away = ~1 unit)
-        // const distance = playerTransform.position.distanceTo(itemTransform.position);
-        // const pickupRange = 1.5; // 1.5 units is about 1 step away
-        
-        // if (distance > pickupRange) {
-        //     console.log(`Too far from item (${distance.toFixed(2)} units). Must be within ${pickupRange} units.`);
-        //     this.showStatusMessage(`Too far from item. Move closer.`);
-        //     this.isItemBeingPickedUp = false; // Release lock
-        //     return;
-        // }
-
-        // // Call the onInteract function from InteractableComponent (which now sends to server)
-        // const interactableComponent = itemEntity.getComponent('InteractableComponent');
-        // if (interactableComponent && interactableComponent.onInteract) {
-        //     interactableComponent.onInteract(playerEntity, itemEntity);
-        // } else {
-        //     console.error('No onInteract function found for item.');
-        //     this.isItemBeingPickedUp = false; // Release lock if no action can be taken
-        // }
-    // }
-
     /**
      * Handle world item removal event
      * @param {Object} data - The removal data
      */
     handleWorldItemRemoval(data) {
-        // console.log('Handling world item removal:', data);
+        Logger.debug(Logger.LogCategories.ENTITY, 'InventorySystem', 'Handling world item removal:', data);
         
         if (!data || !data.itemUuid) {
-            console.error('Invalid removal data received');
+            Logger.error(Logger.LogCategories.ENTITY, 'InventorySystem', 'Invalid removal data received');
             return;
         }
         
@@ -394,7 +341,7 @@ export class InventorySystem extends System {
         const itemEntity = this.itemEntitiesByUuid.get(data.itemUuid);
         
         if (itemEntity) {
-            // console.log(`Removing item entity with UUID: ${data.itemUuid}`);
+            Logger.debug(Logger.LogCategories.ENTITY, 'InventorySystem', `Removing item entity with UUID: ${data.itemUuid}`);
             
             // Remove the entity from the world
             this.world.removeEntity(itemEntity);
@@ -410,7 +357,7 @@ export class InventorySystem extends System {
                 this.isItemBeingPickedUp = false;
             }
         } else {
-            console.warn(`Item entity with UUID ${data.itemUuid} not found in the world`);
+            Logger.warn(Logger.LogCategories.ENTITY, 'InventorySystem', `Item entity with UUID ${data.itemUuid} not found in the world`);
         }
     }
     
@@ -419,11 +366,11 @@ export class InventorySystem extends System {
      * @param {Object} data - The item data
      */
     handleWorldItemAddition(data) {
-        // console.log('Handling world item addition:', data);
+        Logger.debug(Logger.LogCategories.ENTITY, 'InventorySystem', 'Handling world item addition:', data);
         
         // Check if item already exists (this can happen in certain edge cases)
         if (this.itemEntitiesByUuid.has(data.uuid)) {
-            console.warn(`Item with UUID ${data.uuid} already exists, updating it`);
+            Logger.warn(Logger.LogCategories.ENTITY, 'InventorySystem', `Item with UUID ${data.uuid} already exists, updating it`);
             const existingEntity = this.itemEntitiesByUuid.get(data.uuid);
             
             // Update position
@@ -458,7 +405,7 @@ export class InventorySystem extends System {
      * @param {Object} data - The update data
      */
     handleInventoryUpdate(data) {
-        // console.log('Handling inventory update:', data);
+        Logger.debug(Logger.LogCategories.PLAYER, 'InventorySystem', 'Handling inventory update:', data);
         
         // Find local player entity
         const localPlayerEntity = this.world.entities.find(entity => 
@@ -468,7 +415,7 @@ export class InventorySystem extends System {
         );
         
         if (!localPlayerEntity) {
-            console.error('Local player entity not found');
+            Logger.error(Logger.LogCategories.PLAYER, 'InventorySystem', 'Local player entity not found');
             return;
         }
         
@@ -481,7 +428,7 @@ export class InventorySystem extends System {
         
         // Get the inventory component
         if (!localPlayerEntity.hasComponent('InventoryComponent')) {
-            console.error('Local player entity does not have an InventoryComponent');
+            Logger.error(Logger.LogCategories.PLAYER, 'InventorySystem', 'Local player entity does not have an InventoryComponent');
             return;
         }
         
@@ -498,7 +445,7 @@ export class InventorySystem extends System {
                 };
                 
                 // Show success message
-                this.showStatusMessage(`Picked up ${data.itemName}`);
+                Logger.info(Logger.LogCategories.PLAYER, 'InventorySystem', `Picked up ${data.itemName}`);
                 
                 // Release pickup lock
                 this.isItemBeingPickedUp = false;
@@ -511,7 +458,7 @@ export class InventorySystem extends System {
                 inventoryComponent.slots[data.slotIndex] = null;
                 
                 // Show message
-                this.showStatusMessage(`Dropped item`);
+                Logger.info(Logger.LogCategories.PLAYER, 'InventorySystem', `Dropped item`);
                 break;
                 
             case 'move':
@@ -565,7 +512,7 @@ export class InventorySystem extends System {
                 };
                 
                 if (isLocalPlayer) {
-                    this.showStatusMessage(`Picked up ${data.itemName}`);
+                    Logger.info(Logger.LogCategories.PLAYER, 'InventorySystem', `Picked up ${data.itemName}`);
                 }
                 break;
                 
@@ -574,7 +521,7 @@ export class InventorySystem extends System {
                 inventoryComponent.slots[data.slotIndex] = null;
                 
                 if (isLocalPlayer) {
-                    this.showStatusMessage(`Dropped item`);
+                    Logger.info(Logger.LogCategories.PLAYER, 'InventorySystem', `Dropped item`);
                 }
                 break;
                 
@@ -763,7 +710,7 @@ export class InventorySystem extends System {
     updateInventoryUI(inventoryComponent) {
         const slots = document.querySelectorAll('.inventory-slot');
         
-        console.log('[InventorySystem] Updating inventory UI with slots:', inventoryComponent.slots);
+        Logger.debug(Logger.LogCategories.PLAYER, 'InventorySystem', 'Updating inventory UI with slots:', inventoryComponent.slots);
         
         slots.forEach((slot, index) => {
             // Clear slot
@@ -777,7 +724,7 @@ export class InventorySystem extends System {
             const item = inventoryComponent.slots[index];
             
             if (item) {
-                console.log(`[InventorySystem] Slot ${index} item:`, item);
+                Logger.debug(Logger.LogCategories.PLAYER, 'InventorySystem', `Slot ${index} item:`, item);
                 // Create item display
                 const itemDisplay = document.createElement('div');
                 itemDisplay.className = 'inventory-item';
@@ -810,7 +757,7 @@ export class InventorySystem extends System {
                         iconPath = iconPath.substring(1);
                     }
                     
-                    // console.log(`Loading inventory icon from: ${iconPath}`);
+                    Logger.debug(Logger.LogCategories.PLAYER, 'InventorySystem', `Loading inventory icon from: ${iconPath}`);
                     itemDisplay.style.backgroundImage = `url('${iconPath}')`;
                     itemDisplay.style.backgroundSize = 'contain';
                     itemDisplay.style.backgroundPosition = 'center';
@@ -874,7 +821,7 @@ export class InventorySystem extends System {
                 window.handleInventoryContextMenu = module.handleInventoryContextMenu;
                 this.attachContextMenuListeners(slots);
             }).catch(error => {
-                console.error('Error importing inventoryInteraction module:', error);
+                Logger.error(Logger.LogCategories.SYSTEM, 'InventorySystem', 'Error importing inventoryInteraction module:', error);
             });
         } else {
             this.attachContextMenuListeners(slots);

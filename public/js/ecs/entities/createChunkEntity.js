@@ -11,6 +11,7 @@ import {
     InteractableComponent
 } from '../components/index.js';
 import { assetLoader } from '../../utils/assetLoader.js';
+import Logger from '../../utils/logger.js';
 
 // Asset paths
 const GROUND_MODEL = '/models/ground/ground.glb';
@@ -84,7 +85,7 @@ async function createGroundTile(world, options) {
         
         return entity;
     } catch (error) {
-        console.error('Error creating ground tile:', error);
+        Logger.error(Logger.LogCategories.ENTITY, 'GroundTile', 'Error creating ground tile', error);
         return null;
     }
 }
@@ -162,7 +163,7 @@ async function createTreeEntity(world, options) {
         
         return entity;
     } catch (error) {
-        console.error('Error creating tree:', error);
+        Logger.error(Logger.LogCategories.ENTITY, 'TreeEntity', 'Error creating tree', error);
         return null;
     }
 }
@@ -240,7 +241,7 @@ async function createRockEntity(world, options) {
         
         return entity;
     } catch (error) {
-        console.error('Error creating rock:', error);
+        Logger.error(Logger.LogCategories.ENTITY, 'RockEntity', 'Error creating rock', error);
         return null;
     }
 }
@@ -262,11 +263,11 @@ export function createChunk(world, options = {}) {
     const serverData = options.serverData;
     
     if (!serverData) {
-        console.error(`Cannot create chunk at ${chunkX}, ${chunkY} - no server data provided`);
+        Logger.error(Logger.LogCategories.CHUNK, 'createChunk', `Cannot create chunk at ${chunkX}, ${chunkY} - no server data provided`);
         return null;
     }
     
-    console.log(`Creating chunk at ${chunkX}, ${chunkY} from server data`);
+    Logger.info(Logger.LogCategories.CHUNK, 'createChunk', `Creating chunk at ${chunkX}, ${chunkY} from server data`);
     
     // Create the chunk entity
     const chunkEntity = new Entity();
@@ -390,7 +391,7 @@ async function createInstancedGroundTiles(world, chunkEntity, options) {
         });
         
         if (!groundMesh) {
-            console.error('Could not find mesh in ground model');
+            Logger.error(Logger.LogCategories.CHUNK, 'createInstancedGroundTiles', 'Could not find mesh in ground model');
             return null;
         }
         
@@ -464,10 +465,10 @@ async function createInstancedGroundTiles(world, chunkEntity, options) {
             }
         }
         
-        console.log(`Created instanced ground tiles for chunk ${chunkX}, ${chunkY} with ${size * size} tiles`);
+        Logger.info(Logger.LogCategories.CHUNK, 'createInstancedGroundTiles', `Created instanced ground tiles for chunk ${chunkX}, ${chunkY} with ${size * size} tiles`);
         return entity;
     } catch (error) {
-        console.error('Error creating instanced ground tiles:', error);
+        Logger.error(Logger.LogCategories.CHUNK, 'createInstancedGroundTiles', 'Error creating instanced ground tiles', error);
         return null;
     }
 }
@@ -483,7 +484,7 @@ async function populateChunkFromServerData(world, chunkEntity, options) {
     const { chunkX, chunkY, size, serverData } = options;
     
     if (!serverData) {
-        console.error('No server data provided for chunk');
+        Logger.error(Logger.LogCategories.CHUNK, 'populateChunkFromServerData', 'No server data provided for chunk');
         return;
     }
     
@@ -529,5 +530,5 @@ async function populateChunkFromServerData(world, chunkEntity, options) {
     // Wait for all objects to be created
     await Promise.all(objectPromises);
     
-    console.log(`Chunk ${chunkX}, ${chunkY} fully populated from server data`);
+    Logger.info(Logger.LogCategories.CHUNK, 'populateChunkFromServerData', `Chunk ${chunkX}, ${chunkY} fully populated from server data`);
 }

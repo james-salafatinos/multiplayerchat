@@ -86,6 +86,10 @@ export class World {
      * @param {string} componentName - Component class name to find
      * @returns {Entity|null} - First matching entity or null
      */
+    getEntityById(id) {
+        return this.entities.find(entity => entity.active && entity.id === id) || null;
+    }
+
     findEntityWith(componentName) {
         return this.entities.find(entity => 
             entity.active && entity.hasComponent(componentName)

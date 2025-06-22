@@ -5,6 +5,7 @@ import { System } from '../core/index.js';
 import { ChatBubbleComponent } from '../components/chatBubbleComponent.js';
 import { getCamera, getRenderer } from '../../three-setup.js';
 import * as THREE from 'three';
+import Logger from '../../utils/logger.js';
 
 /**
  * ChatBubble System
@@ -23,11 +24,11 @@ export class ChatBubbleSystem extends System {
         
         // Listen for chat message events
         document.addEventListener('player-chat-message', (event) => {
-            console.log('ChatBubbleSystem received player-chat-message event:', event.detail);
+            Logger.debug(Logger.LogCategories.PLAYER, 'ChatBubbleSystem', 'Received player-chat-message event', event.detail);
             this.handleChatMessage(event.detail);
         });
         
-        console.log('ChatBubbleSystem initialized and listening for player-chat-message events');
+        Logger.info(Logger.LogCategories.SYSTEM, 'ChatBubbleSystem', 'Initialized and ready for chat messages');
     }
     
     /**
@@ -51,7 +52,7 @@ export class ChatBubbleSystem extends System {
             
             // Add to DOM
             document.body.appendChild(container);
-            console.log('Created chat bubbles container');
+            Logger.debug(Logger.LogCategories.SYSTEM, 'ChatBubbleSystem', 'Created chat bubbles container');
         }
     }
     
@@ -60,7 +61,10 @@ export class ChatBubbleSystem extends System {
      * @param {Object} data - The chat message data
      */
     handleChatMessage(data) {
-        console.log('Handling chat message for bubble:', data);
+        Logger.debug(Logger.LogCategories.PLAYER, 'ChatBubbleSystem', 'Processing chat message for bubble', {
+            playerId: data.playerId, 
+            username: data.username
+        });
         
         // Find the player entity with the matching ID
         for (const entity of this.world.entities) {
@@ -69,7 +73,10 @@ export class ChatBubbleSystem extends System {
                 
                 // Check if this is the player who sent the message
                 if (playerComponent.playerId === data.playerId) {
-                    console.log('Found player entity for chat bubble:', playerComponent.playerId);
+                    Logger.debug(Logger.LogCategories.PLAYER, 'ChatBubbleSystem', 'Found matching player entity', {
+                        entityId: entity.id,
+                        playerId: playerComponent.playerId
+                    });
                     
                     // Add or update ChatBubbleComponent
                     if (entity.hasComponent('ChatBubbleComponent')) {
@@ -155,7 +162,7 @@ export class ChatBubbleSystem extends System {
         
         // Skip if no element or not visible
         if (!chatComponent.element || !chatComponent.isVisible) {
-            console.log('Skipping position update - element not visible or missing');
+            Logger.trace(Logger.LogCategories.RENDER, 'ChatBubbleSystem', 'Skipping position update - element not visible or missing');
             return;
         }
         
@@ -166,18 +173,18 @@ export class ChatBubbleSystem extends System {
         const characterControllerComponent = entity.getComponent('CharacterControllerComponent');
         if (characterControllerComponent && characterControllerComponent.controller && characterControllerComponent.controller._target) {
             mesh = characterControllerComponent.controller._target;
-            console.log('Using mesh from CharacterControllerComponent');
+            Logger.trace(Logger.LogCategories.RENDER, 'ChatBubbleSystem', 'Using mesh from CharacterControllerComponent');
         } else {
             // Fallback to old MeshComponent system
             const meshComponent = entity.getComponent('MeshComponent');
             if (meshComponent && meshComponent.mesh) {
                 mesh = meshComponent.mesh;
-                console.log('Using mesh from MeshComponent');
+                Logger.trace(Logger.LogCategories.RENDER, 'ChatBubbleSystem', 'Using mesh from MeshComponent');
             }
         }
         
         if (!mesh) {
-            console.log('Entity has no mesh component or character controller with mesh');
+            Logger.debug(Logger.LogCategories.RENDER, 'ChatBubbleSystem', 'Entity has no mesh component or controller with mesh', { entityId: entity.id });
             return;
         }
         
@@ -202,7 +209,12 @@ export class ChatBubbleSystem extends System {
         const x = Math.round((0.5 + tempV.x / 2) * rendererSize.x);
         const y = Math.round((0.5 - tempV.y / 2) * rendererSize.y);
         
-        console.log(`Updating chat bubble position to x:${x}, y:${y} for message: "${chatComponent.message}"`);
+        Logger.trace(Logger.LogCategories.RENDER, 'ChatBubbleSystem', 'Updated chat bubble position', {
+            x, 
+            y, 
+            entityId: entity.id,
+            message: chatComponent.message.substring(0, 20) + (chatComponent.message.length > 20 ? '...' : '')
+        });
         
         // Update element position
         chatComponent.element.style.left = `${x}px`;

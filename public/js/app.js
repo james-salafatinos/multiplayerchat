@@ -18,6 +18,10 @@ import { ChunkSystem } from './ecs/systems/index.js';
 import { InventoryComponent, CharacterControllerComponent } from './ecs/components/index.js'; // Added CharacterControllerComponent
 import { SkillsComponent } from './ecs/components/index.js';
 import { initDebugModule } from './debug.js';
+// Structured Logger
+import Logger from './utils/logger.js';
+const { LogLevels, LogCategories } = Logger;
+const APP_SYSTEM_NAME = 'App';
 
 
 
@@ -36,11 +40,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const camera = getCamera(); // Added for completeness, though not directly used in color logic yet
 
     // Listen for when the local player ID is assigned by the network module
-    console.log("[App.js] Setting up 'local-player-id-assigned' event listener...");
+    Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, "[App.js] Setting up 'local-player-id-assigned' event listener...");
     document.addEventListener('local-player-id-assigned', (event) => {
         const { playerId } = event.detail;
         if (!playerEntities.has(playerId)) {
-            console.log(`[App.js 'local-player-id-assigned'] Preemptively creating local player entity: ${playerId}`);
+            Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js 'local-player-id-assigned'] Preemptively creating local player entity: ${playerId}`);
             const localPlayerEntity = createPlayerEntity(world, scene, {
                 playerId: playerId,
                 username: 'LocalPlayer', // Temporary username, will be updated
@@ -51,15 +55,15 @@ document.addEventListener('DOMContentLoaded', () => {
             localPlayerEntity.addComponent(new SkillsComponent());
             playerEntities.set(playerId, localPlayerEntity);
             const checkComp = localPlayerEntity.getComponent(InventoryComponent);
-            console.log(`[App.js 'local-player-id-assigned'] Added InventoryComponent to ${playerId}. Immediately retrieved: ${checkComp ? 'Found' : 'NOT Found'}`);
+            Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js 'local-player-id-assigned'] Added InventoryComponent to ${playerId}. Immediately retrieved: ${checkComp ? 'Found' : 'NOT Found'}`);
         } else {
-            console.log(`[App.js 'local-player-id-assigned'] Local player entity ${playerId} already exists.`);
+            Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js 'local-player-id-assigned'] Local player entity ${playerId} already exists.`);
         }
     });
-    console.log("[App.js] 'local-player-id-assigned' event listener IS NOW SET UP.");
+    Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, "[App.js] 'local-player-id-assigned' event listener IS NOW SET UP.");
 
     // Initialize networking
-    console.log("[App.js] Initializing network...");
+    Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, "[App.js] Initializing network...");
     initNetwork();
     const socket = getSocket();
 
@@ -73,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Get the current user and dispatch authenticated event
     const currentUser = getCurrentUser();
     if (currentUser && currentUser.username) {
-        console.log('Dispatching player-authenticated event for user:', currentUser.username);
+        Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, 'Dispatching player-authenticated event for user:', currentUser.username);
         document.dispatchEvent(new CustomEvent('player-authenticated', { 
             detail: { username: currentUser.username } 
         }));
@@ -95,11 +99,11 @@ document.addEventListener('DOMContentLoaded', () => {
         '/models/trees/tree-small.glb'
     ];
     
-    console.log('Preloading essential chunk assets...');
+    Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, 'Preloading essential chunk assets...');
     assetLoader.preloadAssets(essentialAssets).then(() => {
-        console.log('Essential chunk assets preloaded successfully');
+        Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, 'Essential chunk assets preloaded successfully');
     }).catch(error => {
-        console.error('Error preloading chunk assets:', error);
+        Logger.error(LogCategories.SYSTEM, APP_SYSTEM_NAME, 'Error preloading chunk assets:', error);
     });
     
     // World items will be created from server data
@@ -117,11 +121,17 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Register ChunkSystem with configuration options
     const chunkSystem = new ChunkSystem({
-        chunkSize: 32,  // 32x32 grid for each chunk
-        loadDistance: 1 // Load chunks 1 away from player in each direction
+        chunkSize: 32,  // Size of each chunk (32x32 units) - MUST match server config
+        loadDistance: 3  // This results in a 5x5 grid for better coverage around player
     });
     world.registerSystem(chunkSystem);
-    chunkSystem.init(world); // Initialize with initial chunk at (0,0)
+    
+    // Enable debugging to show chunk boundaries
+    chunkSystem.debugEnabled = true;
+    
+    // Initialize the chunk system
+    // This will load the initial 3x3 grid of chunks
+    chunkSystem.init(world);
     
     // Set up initial camera position for isometric view
     camera.position.set(15, 10, 15); // Position for 45-degree isometric view
@@ -130,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle players list from server
     document.addEventListener('players-list', (event) => {
         const players = event.detail;
-        console.log('[App.js] Received players-list:', players);
+        Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, '[App.js] Received players-list:', players);
         const localId = getLocalPlayerId();
 
         players.forEach(player => {
@@ -139,18 +149,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (playerEntity) {
                 // Player entity already exists, update its properties
-                console.log(`[App.js 'players-list'] Player ${player.id} (isLocal: ${isLocal}) already exists. Updating.`);
+                Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js 'players-list'] Player ${player.id} (isLocal: ${isLocal}) already exists. Updating.`);
                 const transform = playerEntity.getComponent('TransformComponent');
                 if (transform && player.position) {
                     transform.position.set(player.position.x, player.position.y, player.position.z);
                 }
       
                 if (isLocal && !playerEntity.getComponent(InventoryComponent)) {
-                    console.warn(`[App.js 'players-list'] Local player ${player.id} was missing InventoryComponent. Adding it now.`);
+                    Logger.warn(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js 'players-list'] Local player ${player.id} was missing InventoryComponent. Adding it now.`);
                     playerEntity.addComponent(new InventoryComponent());
                 }
             } else {
-                console.log(`[App.js 'players-list'] Creating new player entity for ${player.id} (isLocal: ${isLocal}).`);
+                Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js 'players-list'] Creating new player entity for ${player.id} (isLocal: ${isLocal}).`);
                 playerEntity = createPlayerEntity(world, scene, {
                     playerId: player.id,
                     username: player.username,
@@ -161,29 +171,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 playerEntity.addComponent(new InventoryComponent());
                 playerEntities.set(player.id, playerEntity);
                 const checkComp = playerEntity.getComponent(InventoryComponent);
-                console.log(`[App.js 'players-list'] Added InventoryComponent to new player ${player.id}. Immediately retrieved: ${checkComp ? 'Found' : 'NOT Found'}`);
+                Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js 'players-list'] Added InventoryComponent to new player ${player.id}. Immediately retrieved: ${checkComp ? 'Found' : 'NOT Found'}`);
             }
 
             // If this is the local player and color is provided, update the color picker and mesh
             if (isLocal) {
-                console.log(`[App.js Local Player Init - players-list] ID: ${player.id}, Received Color: ${player.color}`);
+                Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js Local Player Init - players-list] ID: ${player.id}, Received Color: ${player.color}`);
                 const localPlayerEntityForUpdate = playerEntities.get(player.id);
                 if (localPlayerEntityForUpdate) {
                     const playerComp = localPlayerEntityForUpdate.getComponent('PlayerComponent');
                  
                     if (playerComp && player.color) {
-                        console.log(`[App.js Local Player Init - players-list] Setting desiredColor to ${player.color}.`);
+                        Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js Local Player Init - players-list] Setting desiredColor to ${player.color}.`);
                         playerComp.desiredColor = player.color;
                         playerComp.colorNeedsUpdate = true;
                     } else {
-                        console.error(`[App.js Local Player Init - players-list] PlayerComponent or player.color missing for local player ${player.id}. Player color: ${player.color}`);
+                        Logger.error(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js Local Player Init - players-list] PlayerComponent or player.color missing for local player ${player.id}. Player color: ${player.color}`);
                     }
                 } else {
-                    console.error(`[App.js Local Player Init - players-list] Local player entity ${player.id} not found in map.`);
+                    Logger.error(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js Local Player Init - players-list] Local player entity ${player.id} not found in map.`);
                 }
 
                 if (colorPicker && player.color) {
-                    console.log(`[App.js Local Player Init - players-list] Setting color picker to ${player.color}`);
+                    Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js Local Player Init - players-list] Setting color picker to ${player.color}`);
                     colorPicker.value = player.color;
                 }
             }
@@ -193,13 +203,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle new player joined
     document.addEventListener('player-joined', (event) => {
         const player = event.detail;
-        console.log('[App.js] Received player-joined:', player);
+        Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, '[App.js] Received player-joined:', player);
         const localId = getLocalPlayerId();
         const isLocal = player.id === localId;
         let playerEntity = playerEntities.get(player.id);
 
         if (playerEntity) {
-            console.log(`[App.js 'player-joined'] Player ${player.id} (isLocal: ${isLocal}) already exists. Updating properties.`);
+            Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js 'player-joined'] Player ${player.id} (isLocal: ${isLocal}) already exists. Updating properties.`);
             const transform = playerEntity.getComponent('TransformComponent'); 
             if (transform && player.position) {
                 transform.position.set(player.position.x, player.position.y, player.position.z);
@@ -207,11 +217,11 @@ document.addEventListener('DOMContentLoaded', () => {
           
             // Ensure InventoryComponent for local player
             if (isLocal && !playerEntity.getComponent(InventoryComponent)) {
-                console.warn(`[App.js 'player-joined'] Local player ${player.id} was missing InventoryComponent. Adding it now.`);
+                Logger.warn(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js 'player-joined'] Local player ${player.id} was missing InventoryComponent. Adding it now.`);
                 
                 // Check if we have pending inventory data
                 if (window.pendingInventory) {
-                    console.log(`[App.js] Using pending inventory data for player ${player.id}:`, window.pendingInventory);
+                    Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js] Using pending inventory data for player ${player.id}:`, window.pendingInventory);
                     playerEntity.addComponent(new InventoryComponent({ slots: window.pendingInventory }));
                     window.pendingInventory = null; // Clear pending data
                 } else {
@@ -224,12 +234,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Request inventory data from server to ensure we're synchronized
                 if (getSocket()) {
-                    console.log(`[App.js] Requesting inventory data from server for player ${player.id}`);
+                    Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js] Requesting inventory data from server for player ${player.id}`);
                     getSocket().emit('request inventory', { playerId: player.id });
                 }
             }
         } else {
-            console.log(`[App.js 'player-joined'] Creating new player entity for ${player.id} (isLocal: ${isLocal}).`);
+            Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js 'player-joined'] Creating new player entity for ${player.id} (isLocal: ${isLocal}).`);
             playerEntity = createPlayerEntity(world, scene, {
                 playerId: player.id,
                 username: player.username,
@@ -239,15 +249,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 isMoving: player.isMoving || false // Include animation state from server
             });
             
-            console.log(`[App.js 'player-joined'] Created entity for ${player.id}:`, playerEntity);
-            console.log(`[App.js 'player-joined'] Entity has CharacterControllerComponent:`, !!playerEntity.getComponent('CharacterControllerComponent'));
-            console.log(`[App.js 'player-joined'] Entity has MovementComponent:`, !!playerEntity.getComponent('MovementComponent'));
-            console.log(`[App.js 'player-joined'] Entity has TransformComponent:`, !!playerEntity.getComponent('TransformComponent'));
+            Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js 'player-joined'] Created entity for ${player.id}:`, playerEntity);
+            Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js 'player-joined'] Entity has CharacterControllerComponent:`, !!playerEntity.getComponent('CharacterControllerComponent'));
+            Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js 'player-joined'] Entity has MovementComponent:`, !!playerEntity.getComponent('MovementComponent'));
+            Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js 'player-joined'] Entity has TransformComponent:`, !!playerEntity.getComponent('TransformComponent'));
             
             // Initialize inventory component
             if (isLocal && window.pendingInventory) {
                 // If we have pending inventory data (received before player entity created)
-                console.log(`[App.js] Using pending inventory data for new player ${player.id}:`, window.pendingInventory);
+                Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js] Using pending inventory data for new player ${player.id}:`, window.pendingInventory);
                 playerEntity.addComponent(new InventoryComponent({ slots: window.pendingInventory }));
                 window.pendingInventory = null; // Clear pending data
             } else {
@@ -257,8 +267,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             playerEntities.set(player.id, playerEntity);
             const checkComp = playerEntity.getComponent(InventoryComponent);
-            console.log(`[App.js 'player-joined'] Added InventoryComponent to new player ${player.id}. Immediately retrieved: ${checkComp ? 'Found' : 'NOT Found'}`);
-            console.log(`[App.js 'player-joined'] Total entities in world: ${world.entities.length}`);
+            Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js 'player-joined'] Added InventoryComponent to new player ${player.id}. Immediately retrieved: ${checkComp ? 'Found' : 'NOT Found'}`);
+            Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js 'player-joined'] Total entities in world: ${world.entities.length}`);
         }
 
    
@@ -283,7 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('player-inventory-update', (event) => {
         const inventoryData = event.detail; // This is the array of items or nulls
         const localId = getLocalPlayerId();
-        // console.log(`[App.js] 'player-inventory-update' received for player ${localId}:`, inventoryData);
+        // Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js] 'player-inventory-update' received for player ${localId}:`, inventoryData);
         
         const localPlayerEntity = playerEntities.get(localId);
         if (localPlayerEntity) {
@@ -292,12 +302,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 inventoryComponent.slots = inventoryData; // Directly replace slots
                 document.dispatchEvent(new CustomEvent('inventory-display-update'));
             } else {
-                console.error('[App.js] Local player entity does not have InventoryComponent, adding it now');
+                Logger.error(LogCategories.SYSTEM, APP_SYSTEM_NAME, '[App.js] Local player entity does not have InventoryComponent, adding it now');
                 localPlayerEntity.addComponent(new InventoryComponent({ slots: inventoryData }));
                 document.dispatchEvent(new CustomEvent('inventory-display-update'));
             }
         } else {
-            console.warn(`[App.js] Received player-inventory-update but local player entity (${localId}) not found`);
+            Logger.warn(LogCategories.SYSTEM, APP_SYSTEM_NAME, `[App.js] Received player-inventory-update but local player entity (${localId}) not found`);
             // Store inventory data to be applied when the player entity is created
             window.pendingInventory = inventoryData;
         }
@@ -357,28 +367,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.dispatchEvent(new CustomEvent('inventory-display-update'));
                 }, 50);
             } else {
-                console.error("[App.js] 'local-inventory-changed': Local player found, but no InventoryComponent. Adding it now.");
+                Logger.error(LogCategories.SYSTEM, APP_SYSTEM_NAME, "[App.js] 'local-inventory-changed': Local player found, but no InventoryComponent. Adding it now.");
                 // If somehow the component is missing, add it with the updated inventory
                 const newInventory = Array.isArray(updateData.inventory) ? updateData.inventory : Array(28).fill(null);
                 localPlayerEntity.addComponent(new InventoryComponent({ slots: newInventory }));
                 document.dispatchEvent(new CustomEvent('inventory-display-update'));
             }
         } else {
-            console.warn("[App.js] 'local-inventory-changed': localPlayerEntity not found in playerEntities map for ID:", localId);
+            Logger.warn(LogCategories.SYSTEM, APP_SYSTEM_NAME, "[App.js] 'local-inventory-changed': localPlayerEntity not found in playerEntities map for ID:", localId);
         }
     });
 
     // Handle initial world items state
     document.addEventListener('world-items-state-update', (event) => {
         const items = event.detail; // Array of item objects from server
-        // console.log('Received world items state update:', items);
+        // Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, 'Received world items state update:', items);
 
         worldItemEntities.forEach(entity => entity.deactivate());
         worldItemEntities.clear();
 
         items.forEach(itemData => {
             if (!itemData.uuid) {
-                console.error("World item data missing uuid:", itemData);
+                Logger.error(LogCategories.SYSTEM, APP_SYSTEM_NAME, "World item data missing uuid:", itemData);
                 return;
             }
             // Pass all available item properties to createBasicItem
@@ -398,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             worldItemEntities.set(itemData.uuid, itemEntity);
         });
-        console.log('World items created/updated:', worldItemEntities.size);
+        Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, 'World items created/updated:', worldItemEntities.size);
     });
 
     // Handle a single item being removed from the world
@@ -420,23 +430,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (itemEntity) {
             itemEntity.deactivate(); 
             worldItemEntities.delete(uuid);
-            console.log('World item entity removed:', uuid);
+            Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, 'World item entity removed:', uuid);
         } else {
-            console.warn('Attempted to remove non-existent world item entity:', uuid);
+            Logger.warn(LogCategories.SYSTEM, APP_SYSTEM_NAME, 'Attempted to remove non-existent world item entity:', uuid);
         }
     }
 
     // Handle a single item being added to the world
     document.addEventListener('world-item-added', (event) => {
         const itemData = event.detail;
-        // console.log('Received world item added (document event):', itemData);
+        // Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, 'Received world item added (document event):', itemData);
         addWorldItemToScene(itemData);
     });
     
     // Socket event for world item added
     if (socket) {
         socket.on('world-item-added', (itemData) => {
-            // console.log('Received world item added (socket event):', itemData);
+            // Logger.info(LogCategories.SYSTEM, APP_SYSTEM_NAME, 'Received world item added (socket event):', itemData);
             addWorldItemToScene(itemData);
         });
     }
@@ -444,11 +454,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Helper function to add a world item to the scene
     function addWorldItemToScene(itemData) {
         if (!itemData.uuid) {
-            console.error("Added world item data missing uuid:", itemData);
+            Logger.error(LogCategories.SYSTEM, APP_SYSTEM_NAME, "Added world item data missing uuid:", itemData);
             return;
         }
         if (worldItemEntities.has(itemData.uuid)) {
-            console.warn('Attempted to add already existing world item entity:', itemData.uuid);
+            Logger.warn(LogCategories.SYSTEM, APP_SYSTEM_NAME, 'Attempted to add already existing world item entity:', itemData.uuid);
             return;
         }
         const itemEntity = createBasicItemEntity(world, {
@@ -471,14 +481,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Find local player entity
         const localPlayerEntity = playerEntities.get(localId);
         if (!localPlayerEntity) {
-            console.error('[App.js] Could not find local player entity for trade request');
+            Logger.error(LogCategories.SYSTEM, APP_SYSTEM_NAME, '[App.js] Could not find local player entity for trade request');
             return;
         }
         
         // Get local player's username from the PlayerComponent
         const localPlayerComponent = localPlayerEntity.getComponent('PlayerComponent');
         if (!localPlayerComponent) {
-            console.error('[App.js] Local player entity does not have a PlayerComponent');
+            Logger.error(LogCategories.SYSTEM, APP_SYSTEM_NAME, '[App.js] Local player entity does not have a PlayerComponent');
             return;
         }
         

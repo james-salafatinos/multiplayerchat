@@ -6,6 +6,7 @@ import { getCamera, getScene } from '../../three-setup.js';
 import { getContextMenuManager } from '../../contextMenu.js';
 import * as THREE from 'three';
 import { requestTrade } from '../../trade/index.js';
+import Logger from '../../utils/logger.js';
 
 /**
  * Context Menu System
@@ -28,6 +29,8 @@ export class ContextMenuSystem extends System {
         
         // Listen for context menu requests
         document.addEventListener('context-menu-requested', this.handleContextMenuRequested.bind(this));
+        
+        Logger.info(Logger.LogCategories.SYSTEM, 'ContextMenuSystem', 'Initialized');
     }
     
     /**
@@ -49,7 +52,7 @@ export class ContextMenuSystem extends System {
         const scene = getScene();
         const intersects = this.raycaster.intersectObjects(scene.children, true);
         
-        console.log('Context menu raycaster found', intersects.length, 'intersections');
+        Logger.debug(Logger.LogCategories.INPUT, 'ContextMenuSystem', `Raycaster found ${intersects.length} intersections`);
         
         // Find what was clicked
         let objectHandled = false;
@@ -59,22 +62,25 @@ export class ContextMenuSystem extends System {
             const intersect = intersects[0];
             const object = intersect.object;
             
-            console.log('Intersected object:', object);
-            console.log('Object userData:', object.userData);
+            Logger.debug(Logger.LogCategories.INPUT, 'ContextMenuSystem', 'Intersected object', { 
+                name: object.name,
+                type: object.type
+            });
             
             // Check if object has userData with entity information
             if (object.userData && object.userData.entityId) {
-                console.log('Found entityId in userData:', object.userData.entityId);
+                Logger.debug(Logger.LogCategories.ENTITY, 'ContextMenuSystem', `Found entityId in userData: ${object.userData.entityId}`);
+                
                 // Find the entity in the world
                 const entity = this.findEntityByMesh(object);
                 
                 if (entity) {
-                    console.log('Found entity:', entity.id);
-                    console.log('Entity has components:', 
-                        'MeshComponent:', entity.hasComponent('MeshComponent'),
-                        'PlayerComponent:', entity.hasComponent('PlayerComponent'),
-                        'ItemComponent:', entity.hasComponent('ItemComponent')
-                    );
+                    Logger.debug(Logger.LogCategories.ENTITY, 'ContextMenuSystem', `Found entity: ${entity.id}`, {
+                        hasMeshComponent: entity.hasComponent('MeshComponent'),
+                        hasPlayerComponent: entity.hasComponent('PlayerComponent'),
+                        hasItemComponent: entity.hasComponent('ItemComponent')
+                    });
+                    
                     // Check if it's an item
                     if (entity.hasComponent('ItemComponent')) {
                         const itemComponent = entity.getComponent('ItemComponent');
@@ -129,7 +135,7 @@ export class ContextMenuSystem extends System {
             const entityId = mesh.userData.entityId;
             const entity = this.world.entities.find(e => e.id === entityId);
             if (entity) {
-                console.log('Found entity by userData.entityId:', entityId);
+                Logger.trace(Logger.LogCategories.ENTITY, 'ContextMenuSystem', `Found entity by userData.entityId: ${entityId}`);
                 return entity;
             }
         }
@@ -141,7 +147,7 @@ export class ContextMenuSystem extends System {
                 const entityId = currentObject.userData.entityId;
                 const entity = this.world.entities.find(e => e.id === entityId);
                 if (entity) {
-                    console.log('Found entity by parent userData.entityId:', entityId);
+                    Logger.trace(Logger.LogCategories.ENTITY, 'ContextMenuSystem', `Found entity by parent userData.entityId: ${entityId}`);
                     return entity;
                 }
             }
@@ -153,13 +159,13 @@ export class ContextMenuSystem extends System {
             if (entity.hasComponent('MeshComponent')) {
                 const meshComponent = entity.getComponent('MeshComponent');
                 if (meshComponent.mesh === mesh || meshComponent.mesh.children.includes(mesh)) {
-                    console.log('Found entity by direct mesh comparison');
+                    Logger.trace(Logger.LogCategories.ENTITY, 'ContextMenuSystem', 'Found entity by direct mesh comparison');
                     return entity;
                 }
             }
         }
         
-        console.log('Could not find entity for mesh:', mesh);
+        Logger.debug(Logger.LogCategories.ENTITY, 'ContextMenuSystem', 'Could not find entity for mesh', { meshName: mesh.name });
         return null;
     }
     
@@ -250,7 +256,10 @@ export class ContextMenuSystem extends System {
         // Find the item entity by its component
         const itemEntity = this.findEntityByItemComponent(itemComponent);
         if (!itemEntity) {
-            console.error('ContextMenuSystem: Could not find entity for item component:', itemComponent);
+            Logger.error(Logger.LogCategories.ENTITY, 'ContextMenuSystem', 'Could not find entity for item component', { 
+                itemName: itemComponent.name, 
+                itemType: itemComponent.type 
+            });
             return;
         }
         
@@ -300,14 +309,16 @@ export class ContextMenuSystem extends System {
                                             const distance = playerTransform.position.distanceTo(itemTransform.position);
                                             const pickupRange = interactableComponent.range || 1.5;
                                             
-                                            console.log(`ContextMenuSystem: Distance to item: ${distance.toFixed(2)}, Pickup range: ${pickupRange}`);
+                                            Logger.debug(Logger.LogCategories.PLAYER, 'ContextMenuSystem', `Distance to item: ${distance.toFixed(2)}, Pickup range: ${pickupRange}`);
                                             
                                             if (distance <= pickupRange) {
                                                 // We're close enough, trigger the interaction
-                                                console.log(`ContextMenuSystem: Player reached item, triggering interaction`);
+                                                Logger.debug(Logger.LogCategories.PLAYER, 'ContextMenuSystem', 'Player reached item, triggering interaction');
                                                 interactableComponent.onInteract(playerEntity, movementComponent.targetItem);
                                             } else {
-                                                console.log(`ContextMenuSystem: Player not close enough to item (${distance.toFixed(2)} units). Must be within ${pickupRange} units.`);
+                                                Logger.warn(Logger.LogCategories.PLAYER, 'ContextMenuSystem', `Player not close enough to item (${distance.toFixed(2)} units)`, {
+                                                    requiredRange: pickupRange
+                                                });
                                             }
                                         }
                                         
@@ -673,4 +684,3 @@ export class ContextMenuSystem extends System {
         this.world = world;
     }
 }
-
