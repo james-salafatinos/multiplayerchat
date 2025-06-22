@@ -1,11 +1,13 @@
 /**
  * ChunkSystem - Manages loading and unloading chunks based on player position
+ * Requests chunks from the server and manages client-side chunk cache
  */
 
 import * as THREE from 'three';
 import { System } from '../core/system.js';
 import { ChunkComponent, PlayerComponent, TransformComponent } from '../components/index.js';
 import { createChunk } from '../entities/createChunkEntity.js';
+import { socket } from '../../network.js';
 
 export class ChunkSystem extends System {
     /**
@@ -25,6 +27,12 @@ export class ChunkSystem extends System {
         
         // Track loaded chunks by coordinates for quick lookup
         this.loadedChunks = new Map(); // key: "x,y", value: entityId
+        
+        // Track pending chunk requests to avoid duplicate requests
+        this.pendingChunks = new Map(); // key: "x,y", value: timestamp
+        
+        // Setup socket event listeners for chunk data
+        this._setupSocketListeners();
     }
     
     /**
@@ -34,8 +42,63 @@ export class ChunkSystem extends System {
     init(world) {
         super.init(world);
         
-        // Create the initial (0,0) chunk
-        this.createChunkAt(0, 0);
+        // Request the initial (0,0) chunk from the server
+        this.requestChunkAt(0, 0);
+    }
+    
+    /**
+     * Set up socket event listeners for chunk data
+     * @private
+     */
+    _setupSocketListeners() {
+        // Listen for chunk data from server
+        socket.on('chunk data', (data) => {
+            console.log('Received chunk data:', data);
+            
+            const { chunkX, chunkY, data: chunkData } = data;
+            const key = `${chunkX},${chunkY}`;
+            
+            // Remove from pending requests
+            this.pendingChunks.delete(key);
+            
+            // Create the chunk entity if not already loaded
+            if (!this.loadedChunks.has(key) && chunkData) {
+                this.createChunkFromData(chunkX, chunkY, chunkData);
+            } else if (!chunkData) {
+                console.error(`Received invalid chunk data for ${chunkX}, ${chunkY}`);
+            }
+        });
+        
+        // Listen for multiple chunks data response
+        socket.on('chunks data', (data) => {
+            const { chunks } = data;
+            console.log(`Received data for ${chunks.length} chunks`);
+            
+            if (this.world) {
+                chunks.forEach((chunk) => {
+                    const { chunkX, chunkY, data: chunkData } = chunk;
+                    
+                    // Remove from pending requests
+                    this.pendingChunks.delete(`${chunkX},${chunkY}`);
+                    
+                    // Create the chunk with the received data
+                    if (!this.loadedChunks.has(`${chunkX},${chunkY}`)) {
+                        this.createChunkFromData(chunkX, chunkY, chunkData);
+                    }
+                });
+            }
+        });
+        
+        // Listen for chunk errors
+        socket.on('chunk error', (data) => {
+            const { chunkX, chunkY, error } = data;
+            console.error(`Error loading chunk ${chunkX}, ${chunkY}: ${error}`);
+            
+            // Remove from pending requests
+            if (chunkX !== undefined && chunkY !== undefined) {
+                this.pendingChunkRequests.delete(`${chunkX},${chunkY}`);
+            }
+        });
     }
     
     /**
@@ -74,17 +137,31 @@ export class ChunkSystem extends System {
      * @param {Number} centerY - Player's chunk Y coordinate
      */
     loadChunksAroundPlayer(centerX, centerY) {
+        // Calculate priority for each chunk based on distance from player
+        const chunksToLoad = [];
+        
+        // Load chunks in a square around the player
         for (let x = centerX - this.loadDistance; x <= centerX + this.loadDistance; x++) {
             for (let y = centerY - this.loadDistance; y <= centerY + this.loadDistance; y++) {
+                // Skip if already loaded or pending
                 const key = `${x},${y}`;
-                
-                // Skip if chunk is already loaded
-                if (this.loadedChunks.has(key)) continue;
-                
-                // Create and load the chunk
-                this.createChunkAt(x, y);
+                if (!this.loadedChunks.has(key) && !this.pendingChunks.has(key)) {
+                    // Calculate Manhattan distance for priority
+                    const distance = Math.abs(x - centerX) + Math.abs(y - centerY);
+                    chunksToLoad.push({ x, y, distance });
+                }
             }
         }
+        
+        // Sort chunks by distance (closest first)
+        chunksToLoad.sort((a, b) => a.distance - b.distance);
+        
+        // Request chunks with a small delay between each to avoid flooding the server
+        chunksToLoad.forEach((chunk, index) => {
+            setTimeout(() => {
+                this.requestChunkAt(chunk.x, chunk.y);
+            }, index * 50); // 50ms delay between each request
+        });
     }
     
     /**
@@ -107,15 +184,63 @@ export class ChunkSystem extends System {
                 this.unloadChunk(entityId, key);
             }
         }
+        
+        // Also clean up any stale pending chunk requests
+        // (requests that have been pending for too long)
+        const now = Date.now();
+        const timeout = 10000; // 10 seconds
+        
+        for (const [key, timestamp] of this.pendingChunks.entries()) {
+            if (now - timestamp > timeout) {
+                console.warn(`Cleaning up stale pending chunk request: ${key}`);
+                this.pendingChunks.delete(key);
+            }
+        }
     }
     
     /**
-     * Create a new chunk at the specified coordinates
+     * Request a chunk from the server
      * @param {Number} chunkX - Chunk X coordinate
      * @param {Number} chunkY - Chunk Y coordinate
-     * @returns {Entity} - The created chunk entity
      */
-    createChunkAt(chunkX, chunkY) {
+    requestChunkAt(chunkX, chunkY) {
+        // Request chunk data from server
+        this.requestChunk(chunkX, chunkY);
+    }
+    
+    requestChunk(chunkX, chunkY) {
+        const key = `${chunkX},${chunkY}`;
+        
+        // Check if we already have this chunk or if it's pending
+        if (this.loadedChunks.has(key) || this.pendingChunks.has(key)) {
+            return;
+        }
+        
+        console.log(`Requesting chunk data for ${chunkX}, ${chunkY}`);
+        
+        // Mark as pending with current timestamp
+        this.pendingChunks.set(key, Date.now());
+        
+        // Request from server
+        socket.emit('request chunk', { chunkX, chunkY });
+        
+        // Set a timeout to handle cases where the server doesn't respond
+        setTimeout(() => {
+            if (this.pendingChunks.has(key)) {
+                console.error(`Timeout waiting for chunk ${chunkX}, ${chunkY} from server`);
+                this.pendingChunks.delete(key);
+            }
+        }, 5000); // 5 second timeout
+    }
+    
+    /**
+     * Create a chunk from server data
+     * @param {Number} chunkX - Chunk X coordinate
+     * @param {Number} chunkY - Chunk Y coordinate
+     * @param {Object} chunkData - Chunk data from server
+     * @returns {Entity|null} - The created chunk entity or null if creation failed
+     */
+    createChunkFromData(chunkX, chunkY, chunkData) {
         const key = `${chunkX},${chunkY}`;
         
         // Check if already loaded
@@ -123,12 +248,24 @@ export class ChunkSystem extends System {
             return this.world.getEntityById(this.loadedChunks.get(key));
         }
         
-        // Create the chunk entity
+        if (!chunkData) {
+            console.error(`Cannot create chunk at ${chunkX}, ${chunkY} - invalid chunk data`);
+            return null;
+        }
+        
+        // Create the chunk entity with server data
         const chunkEntity = createChunk(this.world, { 
             chunkX, 
             chunkY, 
-            size: this.chunkSize 
+            size: this.chunkSize,
+            serverData: chunkData // Pass the server data to the chunk creation function
         });
+        
+        // Make sure chunk entity was created successfully
+        if (!chunkEntity) {
+            console.error(`Failed to create chunk entity at ${chunkX}, ${chunkY}`);
+            return null;
+        }
         
         // Track the loaded chunk
         this.loadedChunks.set(key, chunkEntity.id);

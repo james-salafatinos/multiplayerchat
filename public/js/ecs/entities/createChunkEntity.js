@@ -17,10 +17,10 @@ const GROUND_MODEL = '/models/ground/ground.glb';
 const ROCK_MODEL = '/models/rocks/rocks_large.glb';
 const TREE_MODEL = '/models/trees/tree-small.glb';
 
-// Noise function for natural object placement
-function noise(x, y) {
-    return Math.sin(x * 12.9898 + y * 78.233) * 43758.5453 % 1;
-}
+// // Noise function for natural object placement
+// function noise(x, y) {
+//     return Math.sin(x * 12.9898 + y * 78.233) * 43758.5453 % 1;
+// }
 
 /**
  * Create a ground tile entity
@@ -249,14 +249,24 @@ async function createRockEntity(world, options) {
  * Create a chunk entity with ground tiles and objects
  * @param {World} world - The ECS world
  * @param {Object} options - Configuration options
+ * @param {Number} options.chunkX - X coordinate of the chunk
+ * @param {Number} options.chunkY - Y coordinate of the chunk
+ * @param {Number} options.size - Size of the chunk (typically 32)
+ * @param {Object} options.serverData - Server-provided chunk data
  * @returns {Entity} - The created chunk entity
  */
 export function createChunk(world, options = {}) {
     const chunkX = options.chunkX || 0;
     const chunkY = options.chunkY || 0;
     const size = options.size || 32;
+    const serverData = options.serverData;
     
-    console.log(`Creating chunk at ${chunkX}, ${chunkY}`);
+    if (!serverData) {
+        console.error(`Cannot create chunk at ${chunkX}, ${chunkY} - no server data provided`);
+        return null;
+    }
+    
+    console.log(`Creating chunk at ${chunkX}, ${chunkY} from server data`);
     
     // Create the chunk entity
     const chunkEntity = new Entity();
@@ -275,7 +285,13 @@ export function createChunk(world, options = {}) {
     
     // Schedule async loading of contents
     setTimeout(() => {
-        populateChunk(world, chunkEntity, { chunkX, chunkY, size });
+        // Use server data to populate the chunk
+        populateChunkFromServerData(world, chunkEntity, { 
+            chunkX, 
+            chunkY, 
+            size, 
+            serverData 
+        });
     }, 0);
     
     return chunkEntity;
@@ -283,59 +299,228 @@ export function createChunk(world, options = {}) {
 
 /**
  * Asynchronously populate a chunk with ground tiles and objects
+ * This is the legacy method that uses client-side generation
  */
-async function populateChunk(world, chunkEntity, options) {
-    const { chunkX, chunkY, size } = options;
+// async function populateChunk(world, chunkEntity, options) {
+//     const { chunkX, chunkY, size } = options;
     
-    // Generate ground tiles for the entire chunk
-    const tilePromises = [];
-    for (let x = 0; x < size; x++) {
-        for (let y = 0; y < size; y++) {
-            tilePromises.push(createGroundTile(world, {
-                x,
-                y,
-                chunkX,
-                chunkY,
-                chunkSize: size,
-                parent: chunkEntity
-            }));
+//     // Generate ground tiles for the entire chunk
+//     const tilePromises = [];
+//     for (let x = 0; x < size; x++) {
+//         for (let y = 0; y < size; y++) {
+//             tilePromises.push(createGroundTile(world, {
+//                 x,
+//                 y,
+//                 chunkX,
+//                 chunkY,
+//                 chunkSize: size,
+//                 parent: chunkEntity
+//             }));
+//         }
+//     }
+    
+//     // Wait for all ground tiles to be created
+//     await Promise.all(tilePromises);
+    
+//     // Generate objects (trees, rocks) based on noise
+//     const objectPromises = [];
+    
+//     // Use noise function to determine object placement
+//     for (let x = 0; x < size; x += 2) { // Space objects out
+//         for (let y = 0; y < size; y += 2) {
+//             const noiseVal = noise(chunkX * size + x, chunkY * size + y);
+            
+//             // Skip edges to prevent objects being cut off at chunk boundaries
+//             if (x < 2 || y < 2 || x >= size - 2 || y >= size - 2) continue;
+            
+//             // 5% chance for a rock
+//             if (noiseVal > 0.95) {
+//                 objectPromises.push(createRockEntity(world, {
+//                     x,
+//                     y, 
+//                     chunkX,
+//                     chunkY,
+//                     chunkSize: size,
+//                     parent: chunkEntity
+//                 }));
+//             } 
+//             // 10% chance for a tree (if not a rock)
+//             else if (noiseVal > 0.85) {
+//                 objectPromises.push(createTreeEntity(world, {
+//                     x,
+//                     y,
+//                     chunkX,
+//                     chunkY,
+//                     chunkSize: size,
+//                     parent: chunkEntity
+//                 }));
+//             }
+//         }
+//     }
+    
+//     // Wait for all objects to be created
+//     await Promise.all(objectPromises);
+    
+//     console.log(`Chunk ${chunkX}, ${chunkY} fully populated using client-side generation`);
+// }
+
+/**
+ * Create instanced ground tiles for an entire chunk
+ * @param {World} world - The ECS world
+ * @param {Entity} chunkEntity - The chunk entity to populate
+ * @param {Object} options - Configuration options
+ * @returns {Entity} - The created instanced ground tiles entity
+ */
+async function createInstancedGroundTiles(world, chunkEntity, options) {
+    const { chunkX, chunkY, size, terrain = 'grass' } = options;
+    
+    // Create entity for the instanced ground tiles
+    const entity = new Entity();
+    
+    try {
+        // Load the ground model
+        const groundModel = await assetLoader.loadModel(GROUND_MODEL);
+        
+        // Extract the mesh from the model
+        let groundMesh;
+        groundModel.traverse(child => {
+            if (child.isMesh) {
+                groundMesh = child;
+            }
+        });
+        
+        if (!groundMesh) {
+            console.error('Could not find mesh in ground model');
+            return null;
         }
+        
+        // Create instanced mesh
+        const instancedMesh = new THREE.InstancedMesh(
+            groundMesh.geometry,
+            groundMesh.material,
+            size * size // Total number of tiles in the chunk
+        );
+        
+        // Set entity ID in userData for raycasting
+        instancedMesh.userData.entityId = entity.id;
+        instancedMesh.userData.isInstanced = true;
+        
+        // Create matrix for each instance
+        const matrix = new THREE.Matrix4();
+        let instanceIndex = 0;
+        
+        // Calculate world position offset for the chunk
+        const chunkOffsetX = chunkX * size;
+        const chunkOffsetZ = chunkY * size;
+        
+        // Position each ground tile instance
+        for (let x = 0; x < size; x++) {
+            for (let y = 0; y < size; y++) {
+                const worldX = chunkOffsetX + x;
+                const worldZ = chunkOffsetZ + y;
+                
+                matrix.setPosition(worldX, -0.5, worldZ);
+                instancedMesh.setMatrixAt(instanceIndex, matrix);
+                
+                // Store tile coordinates for raycasting
+                instancedMesh.userData[`tile_${instanceIndex}`] = { x, y };
+                
+                instanceIndex++;
+            }
+        }
+        
+        // Update the instance matrix buffer
+        instancedMesh.instanceMatrix.needsUpdate = true;
+        
+        // Add transform component for the entire chunk of ground tiles
+        entity.addComponent(new TransformComponent({
+            position: new THREE.Vector3(0, 0, 0),
+            rotation: new THREE.Euler(0, 0, 0),
+            scale: new THREE.Vector3(1, 1, 1)
+        }));
+        
+        // Add mesh component
+        entity.addComponent(new MeshComponent({
+            mesh: instancedMesh
+        }));
+        
+        // Add interactable component for "walk here" functionality
+        entity.addComponent(new InteractableComponent({
+            type: 'ground',
+            actions: [{
+                name: 'Walk here',
+                handler: 'walkTo'
+            }]
+        }));
+        
+        // Add to world
+        world.addEntity(entity);
+        
+        // Add to parent chunk's entity list
+        if (chunkEntity) {
+            const chunkComponent = chunkEntity.getComponent(ChunkComponent);
+            if (chunkComponent) {
+                chunkComponent.addEntity(entity.id);
+            }
+        }
+        
+        console.log(`Created instanced ground tiles for chunk ${chunkX}, ${chunkY} with ${size * size} tiles`);
+        return entity;
+    } catch (error) {
+        console.error('Error creating instanced ground tiles:', error);
+        return null;
+    }
+}
+
+/**
+ * Asynchronously populate a chunk using server-provided data
+ * @param {World} world - The ECS world
+ * @param {Entity} chunkEntity - The chunk entity to populate
+ * @param {Object} options - Configuration options
+ * @param {Object} options.serverData - Server-provided chunk data
+ */
+async function populateChunkFromServerData(world, chunkEntity, options) {
+    const { chunkX, chunkY, size, serverData } = options;
+    
+    if (!serverData) {
+        console.error('No server data provided for chunk');
+        return;
     }
     
-    // Wait for all ground tiles to be created
-    await Promise.all(tilePromises);
+    // Create instanced ground tiles for the entire chunk (much faster than individual tiles)
+    await createInstancedGroundTiles(world, chunkEntity, {
+        chunkX,
+        chunkY,
+        size,
+        terrain: serverData.terrain || 'grass'
+    });
     
-    // Generate objects (trees, rocks) based on noise
+    // Create objects from server data
     const objectPromises = [];
     
-    // Use noise function to determine object placement
-    for (let x = 0; x < size; x += 2) { // Space objects out
-        for (let y = 0; y < size; y += 2) {
-            const noiseVal = noise(chunkX * size + x, chunkY * size + y);
-            
-            // Skip edges to prevent objects being cut off at chunk boundaries
-            if (x < 2 || y < 2 || x >= size - 2 || y >= size - 2) continue;
-            
-            // 5% chance for a rock
-            if (noiseVal > 0.95) {
-                objectPromises.push(createRockEntity(world, {
-                    x,
-                    y, 
-                    chunkX,
-                    chunkY,
-                    chunkSize: size,
-                    parent: chunkEntity
-                }));
-            } 
-            // 10% chance for a tree (if not a rock)
-            else if (noiseVal > 0.85) {
+    if (serverData.objects && Array.isArray(serverData.objects)) {
+        for (const obj of serverData.objects) {
+            if (obj.type === 'tree') {
                 objectPromises.push(createTreeEntity(world, {
-                    x,
-                    y,
+                    x: obj.x,
+                    y: obj.y,
                     chunkX,
                     chunkY,
                     chunkSize: size,
-                    parent: chunkEntity
+                    parent: chunkEntity,
+                    scale: obj.scale,
+                    rotation: obj.rotation
+                }));
+            } else if (obj.type === 'rock') {
+                objectPromises.push(createRockEntity(world, {
+                    x: obj.x,
+                    y: obj.y,
+                    chunkX,
+                    chunkY,
+                    chunkSize: size,
+                    parent: chunkEntity,
+                    scale: obj.scale,
+                    rotation: obj.rotation
                 }));
             }
         }
@@ -344,5 +529,5 @@ async function populateChunk(world, chunkEntity, options) {
     // Wait for all objects to be created
     await Promise.all(objectPromises);
     
-    console.log(`Chunk ${chunkX}, ${chunkY} fully populated`);
+    console.log(`Chunk ${chunkX}, ${chunkY} fully populated from server data`);
 }

@@ -205,7 +205,7 @@ export function initPlayerHandlers(socket, io, players, worldItems) {
 
   // Handle player position updates
   socket.on(EVENTS.UPDATE_POSITION, (data) => {
-    console.log('Position update received:', data);
+    // console.log('Position update received:', data);
     
     try {
       // Update player's position in memory
@@ -251,7 +251,7 @@ export function initPlayerHandlers(socket, io, players, worldItems) {
         
         // Broadcast the position update to other clients
         // Include both current position and target position for smooth interpolation
-        console.log(`[NET-ANIM-DBG] Server broadcasting 'player position': ID=${socket.id}, isMoving=${player.isMoving}, pos=${JSON.stringify(player.position)}, rot=${JSON.stringify(player.rotation)}`);
+        // console.log(`[NET-ANIM-DBG] Server broadcasting 'player position': ID=${socket.id}, isMoving=${player.isMoving}, pos=${JSON.stringify(player.position)}, rot=${JSON.stringify(player.rotation)}`);
         socket.broadcast.emit('player position', {
           playerId: socket.id,
           position: player.position,

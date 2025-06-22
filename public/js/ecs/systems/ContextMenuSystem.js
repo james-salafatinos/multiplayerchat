@@ -52,6 +52,8 @@ export class ContextMenuSystem extends System {
         console.log('Context menu raycaster found', intersects.length, 'intersections');
         
         // Find what was clicked
+        let objectHandled = false;
+        
         if (intersects.length > 0) {
             // Get the first intersected object
             const intersect = intersects[0];
@@ -79,6 +81,7 @@ export class ContextMenuSystem extends System {
                         
                         // Show context menu for item
                         this.showItemContextMenu(x, y, itemComponent, intersect.point);
+                        objectHandled = true;
                         return;
                     }
                     
@@ -90,6 +93,7 @@ export class ContextMenuSystem extends System {
                         if (!playerComponent.isLocalPlayer) {
                             // Show context menu for player
                             this.showPlayerContextMenu(x, y, playerComponent, entity, intersect.point);
+                            objectHandled = true;
                             return;
                         }
                     }
@@ -100,6 +104,7 @@ export class ContextMenuSystem extends System {
                         
                         // Show context menu for interactable object
                         this.showInteractableContextMenu(x, y, interactableComponent, entity, intersect.point);
+                        objectHandled = true;
                         return;
                     }
                 }
@@ -107,7 +112,7 @@ export class ContextMenuSystem extends System {
         }
         
         // If no specific object was clicked, check for ground plane intersection
-        if (this.raycaster.ray.intersectPlane(this.groundPlane, this.targetPoint)) {
+        if (!objectHandled && this.raycaster.ray.intersectPlane(this.groundPlane, this.targetPoint)) {
             // Show default context menu for ground
             this.showGroundContextMenu(x, y, this.targetPoint);
         }
@@ -419,6 +424,8 @@ export class ContextMenuSystem extends System {
         // Add all actions from the interactable component (if any)
         if (interactableComponent.actions && Array.isArray(interactableComponent.actions)) {
             for (const action of interactableComponent.actions) {
+
+                
                 menuItems.push({
                     label: action.name,
                     action: (target) => {
@@ -484,8 +491,8 @@ export class ContextMenuSystem extends System {
                                 
                                 // Restore original handler
                                 movementComponent.onReachTarget = originalOnReachTarget;
-                        };
-                        
+                            };
+                            
                             // Emit movement to server
                             if (this.socket) {
                                 this.socket.emit('update position', {
@@ -499,45 +506,50 @@ export class ContextMenuSystem extends System {
                             }
                         }
                     }
-            });
+                });
+            }
         }
         
-        // Add walk here option
-        menuItems.push({ separator: true });
-        menuItems.push({
-            label: 'Walk here',
-            action: (target) => {
-                // Get player components
-                const playerComponent = localPlayerEntity.getComponent('PlayerComponent');
-                const movementComponent = localPlayerEntity.getComponent('MovementComponent');
-                
-                if (!movementComponent) {
-                    console.error('Local player has no movement component');
-                    return;
+        // Only add the 'Walk here' option if this isn't already a ground interactable
+        // (ground interactables already have a 'Walk here' action defined in their actions array)
+        if (interactableComponent.type !== 'ground') {
+            // Add walk here option
+            menuItems.push({ separator: true });
+            menuItems.push({
+                label: 'Walk here',
+                action: (target) => {
+                    // Get player components
+                    const playerComponent = localPlayerEntity.getComponent('PlayerComponent');
+                    const movementComponent = localPlayerEntity.getComponent('MovementComponent');
+                    
+                    if (!movementComponent) {
+                        console.error('Local player has no movement component');
+                        return;
+                    }
+                    
+                    // Set target position
+                    movementComponent.targetPosition.copy(target);
+                    movementComponent.targetPosition.y = 0; // Keep at ground level
+                    movementComponent.isMoving = true;
+                    
+                    // Clear any target entity/action
+                    movementComponent.targetEntity = null;
+                    movementComponent.targetAction = null;
+                    
+                    // Emit movement to server
+                    if (this.socket) {
+                        this.socket.emit('update position', {
+                            playerId: playerComponent.playerId,
+                            targetPosition: {
+                                x: movementComponent.targetPosition.x,
+                                y: movementComponent.targetPosition.y,
+                                z: movementComponent.targetPosition.z
+                            }
+                        });
+                    }
                 }
-                
-                // Set target position
-                movementComponent.targetPosition.copy(target);
-                movementComponent.targetPosition.y = 0; // Keep at ground level
-                movementComponent.isMoving = true;
-                
-                // Clear any target entity/action
-                movementComponent.targetEntity = null;
-                movementComponent.targetAction = null;
-                
-                // Emit movement to server
-                if (this.socket) {
-                    this.socket.emit('update position', {
-                        playerId: playerComponent.playerId,
-                        targetPosition: {
-                            x: movementComponent.targetPosition.x,
-                            y: movementComponent.targetPosition.y,
-                            z: movementComponent.targetPosition.z
-                        }
-                    });
-                }
-            }
-        });
+            });
+        }
         
         // Add cancel option
         menuItems.push({ separator: true });
@@ -551,7 +563,6 @@ export class ContextMenuSystem extends System {
         // Show the context menu
         this.contextMenuManager.showMenu(x, y, menuItems, targetPoint);
     }
-}
     
     /**
      * Show context menu for player

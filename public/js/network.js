@@ -4,6 +4,9 @@ let userCount = 0;
 let localPlayerId = null;
 let authenticatedUser = null;
 
+// Export socket for use in other modules
+export { socket };
+
 /**
  * Initialize the Socket.io connection
  * @returns {Object} The socket instance

@@ -17,6 +17,8 @@ import createRouter from './routes/index.js';
 import { initSocketHandlers, activeTrades } from './socket/index.js';
 import { initDebugHandlers } from './socket/debug.js';
 import { initializeWorldItems } from './utils/worldItems.js';
+import chunkManager from './config/chunks.js';
+import initChunkHandlers from './socket/chunks.js';
 
 // Load environment variables
 dotenv.config();
@@ -59,8 +61,13 @@ app.get('/debug', (req, res) => {
 // Initialize world items
 const worldItems = initializeWorldItems();
 
+// Initialize world chunks
+console.log('Loading world chunks...');
+const availableChunks = chunkManager.listAllChunks();
+console.log(`Found ${availableChunks.length} pre-defined chunks`);
+
 // Create and mount API routes with players and worldItems access
-const router = createRouter(players, worldItems);
+const router = createRouter(players, worldItems, chunkManager);
 app.use('/api', router);
 
 // Initialize socket handlers
@@ -68,6 +75,9 @@ initSocketHandlers(io, players, worldItems);
 
 // Initialize debug socket handlers
 initDebugHandlers(io, players, worldItems);
+
+// Initialize chunk handlers
+initChunkHandlers(io, chunkManager);
 
 // Start the server
 const PORT = process.env.PORT || 3000;
