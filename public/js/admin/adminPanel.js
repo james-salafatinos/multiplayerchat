@@ -44,6 +44,7 @@ function createAdminUI() {
             <div class="admin-tabs">
                 <button class="admin-tab active" data-tab="items">Items</button>
                 <button class="admin-tab" data-tab="skills">Skills</button>
+                <button class="admin-tab" data-tab="teleport">Teleport</button>
             </div>
             <div class="admin-tab-content active" id="tab-items">
             <div class="admin-section">
@@ -75,6 +76,33 @@ function createAdminUI() {
                 </div>
             </div>
             </div>
+            
+            <!-- Teleport Tab -->
+            <div class="admin-tab-content" id="tab-teleport">
+                <div class="admin-section">
+                    <h3>Teleport Player</h3>
+                    <select id="teleport-player-select">
+                        <option value="">Select a player...</option>
+                    </select>
+                    <div class="position-inputs">
+                        <label>
+                            X:
+                            <input type="number" id="teleport-x" value="0" step="0.5">
+                        </label>
+                        <label>
+                            Y:
+                            <input type="number" id="teleport-y" value="0.5" step="0.05">
+                        </label>
+                        <label>
+                            Z:
+                            <input type="number" id="teleport-z" value="0" step="0.5">
+                        </label>
+                    </div>
+                    <button id="teleport-player">Teleport</button>
+                    <div id="teleport-result" class="admin-result"></div>
+                </div>
+            </div>
+            
             <div class="admin-tab-content" id="tab-skills">
                 <div class="admin-section">
                     <h3>Award XP</h3>
@@ -315,6 +343,7 @@ function setupEventListeners() {
     const spawnItem = document.getElementById('spawn-item');
     const refreshItems = document.getElementById('refresh-items');
     const awardXp = document.getElementById('award-xp');
+    const teleportPlayerBtn = document.getElementById('teleport-player');
 
     // Toggle admin panel
     adminButton.addEventListener('click', () => {
@@ -326,8 +355,8 @@ function setupEventListeners() {
         adminPanel.classList.add('hidden');
     });
 
-    // Admin login
-    adminLogin.addEventListener('click', () => {
+    // Login function
+    const performLogin = () => {
         const password = document.getElementById('admin-password').value;
         const socket = getSocket();
         
@@ -354,6 +383,17 @@ function setupEventListeners() {
         } else {
             alert('Not connected to server');
         }
+    };
+
+    // Admin login button click
+    adminLogin.addEventListener('click', performLogin);
+    
+    // Handle Enter key press in password field
+    const adminPasswordInput = document.getElementById('admin-password');
+    adminPasswordInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            performLogin();
+        }
     });
 
     // Tab switching
@@ -375,11 +415,41 @@ function setupEventListeners() {
                 fetchWorldItems();
             } else if (tabName === 'skills') {
                 fetchPlayers();
+            } else if (tabName === 'teleport') {
+                fetchPlayers();
             }
         });
     });
 
     // Spawn item
+    if (teleportPlayerBtn) {
+        teleportPlayerBtn.addEventListener('click', () => {
+            const playerId = document.getElementById('teleport-player-select').value;
+            const posX = parseFloat(document.getElementById('teleport-x').value);
+            const posY = parseFloat(document.getElementById('teleport-y').value);
+            const posZ = parseFloat(document.getElementById('teleport-z').value);
+
+            if (!playerId) {
+                alert('Please select a player');
+                return;
+            }
+
+            const socket = getSocket();
+            if (socket) {
+                socket.emit('admin:teleportPlayer', {
+                    playerId,
+                    position: { x: posX, y: posY, z: posZ }
+                });
+
+                const result = document.getElementById('teleport-result');
+                if (result) {
+                    result.textContent = `Teleport request sent for ${playerId}`;
+                    result.className = 'admin-result success';
+                }
+            }
+        });
+    }
+
     if (spawnItem) {
         spawnItem.addEventListener('click', () => {
             const itemId = document.getElementById('item-select').value;
@@ -538,20 +608,39 @@ function fetchPlayers() {
  */
 function updatePlayerSelect(players) {
     const playerSelect = document.getElementById('player-select');
-    if (!playerSelect) return;
-    
-    // Clear existing options except the first one
-    while (playerSelect.options.length > 1) {
-        playerSelect.remove(1);
-    }
-    
-    // Add players to select
+    const teleportSelect = document.getElementById('teleport-player-select');
+
+    // Ensure both selects exist
+    if (!playerSelect && !teleportSelect) return;
+
+    // Helper to clear options except first
+    const clearOptions = (select) => {
+        if (!select) return;
+        while (select.options.length > 1) {
+            select.remove(1);
+        }
+    };
+
+    clearOptions(playerSelect);
+    clearOptions(teleportSelect);
+
+    // Add players to both selects
     if (players && players.length > 0) {
         players.forEach(player => {
-            const option = document.createElement('option');
-            option.value = player.username;
-            option.textContent = player.username;
-            playerSelect.appendChild(option);
+            // For skills award dropdown use username as value, for teleport dropdown use player id
+            if (playerSelect) {
+                const optPlayer = document.createElement('option');
+                optPlayer.value = player.username; // Value needed server-side for admin:awardXp
+                optPlayer.textContent = player.username;
+                playerSelect.appendChild(optPlayer);
+            }
+
+            if (teleportSelect) {
+                const optTeleport = document.createElement('option');
+                optTeleport.value = player.id; // Teleport endpoint prefers playerId
+                optTeleport.textContent = player.username;
+                teleportSelect.appendChild(optTeleport);
+            }
         });
     }
 }

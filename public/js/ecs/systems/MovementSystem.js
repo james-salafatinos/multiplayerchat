@@ -24,14 +24,7 @@ export class MovementSystem extends System {
         document.addEventListener('remote-position-update', (event) => {
             // console.log(`[NET-ANIM-DBG] MovementSystem: remote-position-update received for entity ${event.detail.entityId}, isMoving: ${event.detail.isMoving}, position: ${JSON.stringify(event.detail.position)}`);
             this.handleRemotePosition(event.detail);
-            // Log after attempting to update the component
-            const entity = this.entityManager.getEntityById(event.detail.entityId);
-            if (entity) {
-                const mc = entity.getComponent('MovementComponent');
-                if (mc) {
-                    // console.log(`[NET-ANIM-DBG] MovementSystem: MovementComponent updated for ${event.detail.entityId}, isMoving: ${mc.isMoving}`);
-                }
-            }
+            
         });
         
         // Set up click and drag handlers for player movement and camera control
@@ -322,7 +315,7 @@ export class MovementSystem extends System {
         let entity;
         for (const e of this.world.entities) {
             const playerComponent = e.getComponent('PlayerComponent');
-            if (playerComponent && playerComponent.playerId === data.playerId && !playerComponent.isLocalPlayer) {
+            if (playerComponent && playerComponent.playerId === data.playerId) {
                 entity = e;
                 break;
             }

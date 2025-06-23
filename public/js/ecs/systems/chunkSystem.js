@@ -122,39 +122,40 @@ export class ChunkSystem extends System {
     update(world, deltaTime) {
         // Keep reference to world up-to-date each frame
         this.world = world;
-        // Find player entities
-        const playerEntities = this.world.findEntitiesWith('PlayerComponent');
-        
-        // No players to process
-        if (playerEntities.length === 0) return;
-        
-        // Process each player
-        for (const playerEntity of playerEntities) {
-            const transform = playerEntity.getComponent('TransformComponent');
-            if (!transform) continue;
-            
-            // Get current player position
-            const position = transform.position;
-            
-            // Calculate which chunk the player is in
-            const { chunkX, chunkY } = ChunkComponent.getChunkCoordsFromPosition(position, this.chunkSize);
-            if (this.debugEnabled) {
-                console.debug(`ChunkSystem: player at (${position.x.toFixed(2)}, ${position.z.toFixed(2)}) in chunk (${chunkX},${chunkY})`);
-            }
-            
-            // Store player's current chunk in the player component for debugging
-            const playerComponent = playerEntity.getComponent('PlayerComponent');
-            if (playerComponent) {
-                playerComponent.currentChunkX = chunkX;
-                playerComponent.currentChunkY = chunkY;
-            }
-            
-            // Load chunks around player
-            this.loadChunksAroundPlayer(chunkX, chunkY, false);
-            
-            // Unload distant chunks
-            this.unloadDistantChunks(chunkX, chunkY);
+        // Only consider the LOCAL player when deciding which chunks to load/unload
+        const localPlayers = this.world
+            .findEntitiesWith('PlayerComponent')
+            .filter((e) => {
+                const pc = e.getComponent('PlayerComponent');
+                return pc && pc.isLocalPlayer;
+            });
+
+        // No local player yet (e.g. still connecting)
+        if (localPlayers.length === 0) return;
+
+        // There should only ever be one local player entity
+        const playerEntity = localPlayers[0];
+        const transform = playerEntity.getComponent('TransformComponent');
+        if (!transform) return;
+
+        // Get current player position and derive the chunk we are in
+        const position = transform.position;
+        const { chunkX, chunkY } = ChunkComponent.getChunkCoordsFromPosition(position, this.chunkSize);
+
+        if (this.debugEnabled) {
+            console.debug(`ChunkSystem: LOCAL player at (${position.x.toFixed(2)}, ${position.z.toFixed(2)}) in chunk (${chunkX},${chunkY})`);
         }
+
+        // Store for debugging / external systems
+        const playerComponent = playerEntity.getComponent('PlayerComponent');
+        if (playerComponent) {
+            playerComponent.currentChunkX = chunkX;
+            playerComponent.currentChunkY = chunkY;
+        }
+
+        // Load/unload chunks relative to the local player's position
+        this.loadChunksAroundPlayer(chunkX, chunkY, false);
+        this.unloadDistantChunks(chunkX, chunkY);
     }
     
     /**
@@ -322,13 +323,26 @@ export class ChunkSystem extends System {
         const chunkComponent = entity.getComponent('ChunkComponent');
         if (!chunkComponent) return;
         
-        // Remove all entities in this chunk
+        // Mark all child entities as inactive so other systems (e.g. RenderSystem)
+        // can properly dispose of their meshes before the World purges them.
         for (const childEntityId of chunkComponent.entities) {
-            this.world.removeEntity(childEntityId);
+            const child = this.world.getEntityById(childEntityId);
+            if (child) {
+                // Proactively remove any meshes from the scene right now. This saves
+                // us from relying on RenderSystem running after ChunkSystem.
+                if (child.hasComponent('MeshComponent')) {
+                    const meshComp = child.getComponent('MeshComponent');
+                    if (meshComp.mesh && meshComp.mesh.parent) {
+                        meshComp.mesh.parent.remove(meshComp.mesh);
+                        meshComp.addedToScene = false;
+                    }
+                }
+                child.active = false;
+            }
         }
-        
-        // Remove the chunk entity from the world
-        this.world.removeEntity(entityId);
+
+        // Mark the chunk entity itself as inactive
+        entity.active = false;
         
         // Remove from tracking map
         this.loadedChunks.delete(key);

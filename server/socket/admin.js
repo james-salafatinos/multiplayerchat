@@ -325,6 +325,66 @@ export function initAdminHandlers(socket, io, players, worldItems) {
     }
   });
 
+  // Teleport a player to coordinates
+  socket.on('admin:teleportPlayer', (data) => {
+    if (!isAdmin()) {
+      socket.emit('admin:error', { message: 'Unauthorized access' });
+      return;
+    }
+
+    try {
+      const { playerId, username, position } = data;
+
+      if (!position || typeof position.x !== 'number' || typeof position.y !== 'number' || typeof position.z !== 'number') {
+        socket.emit('admin:teleportPlayer:response', {
+          success: false,
+          message: 'Invalid position data'
+        });
+        return;
+      }
+
+      // Locate target player (prefer by playerId, fallback to username)
+      let targetPlayer;
+      if (playerId && players.has(playerId)) {
+        targetPlayer = players.get(playerId);
+      } else if (username) {
+        targetPlayer = Array.from(players.values()).find(p => p.username === username);
+      }
+
+      if (!targetPlayer) {
+        socket.emit('admin:teleportPlayer:response', {
+          success: false,
+          message: `Player not found`
+        });
+        return;
+      }
+
+      // Update player position server-side
+      targetPlayer.position = { ...position };
+      targetPlayer.targetPosition = { ...position };
+      targetPlayer.isMoving = false;
+
+      // Broadcast teleport to all clients so they update instantly
+      io.emit('player:teleport', {
+        playerId: targetPlayer.id,
+        position: targetPlayer.position,
+        rotation: targetPlayer.rotation || { x: 0, y: 0, z: 0 },
+        isMoving: false
+      });
+
+      socket.emit('admin:teleportPlayer:response', {
+        success: true,
+        message: `Teleported ${targetPlayer.username || targetPlayer.id} to (${position.x}, ${position.y}, ${position.z})`
+      });
+    } catch (err) {
+      console.error('Error handling admin:teleportPlayer:', err);
+      socket.emit('admin:teleportPlayer:response', {
+        success: false,
+        message: `Error: ${err.message}`
+      });
+    }
+  });
+
   // Remove a world item
   socket.on('admin:removeWorldItem', (data) => {
     if (!isAdmin()) {
