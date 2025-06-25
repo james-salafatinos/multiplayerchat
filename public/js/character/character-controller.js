@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { FBXLoader } from "../modules/FBXLoader.js";
 import { BasicCharacterControllerInput } from "./character-input.js";
 import { CharacterFSM } from "./state-machine.js";
-import Logger from "../utils/logger.js";
+
 
 export class BasicCharacterControllerProxy {
   constructor(animations) {

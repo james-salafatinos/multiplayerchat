@@ -1,6 +1,6 @@
 // Network functionality using Socket.io
-import Logger from './utils/logger.js';
-const { LogCategories } = Logger;
+
+
 let socket;
 let userCount = 0;
 let localPlayerId = null;
@@ -56,7 +56,7 @@ export function initNetwork() {
     
     // Handle teleport events (server-driven)
     socket.on('player:teleport', (data) => {
-        Logger.info(LogCategories.NETWORK, 'Network', 'Received player teleport', data);
+        console.log('Network', 'Received player teleport', data);
         // Re-use existing remote-position-update mechanism
         document.dispatchEvent(new CustomEvent('remote-position-update', { detail: data }));
     });

@@ -9,6 +9,7 @@ import { dirname, join } from 'path';
 import session from 'express-session';
 import SQLiteStoreFactory from 'connect-sqlite3';
 import dotenv from 'dotenv';
+import { initGoldModule, goldStatements } from './db/gold.js';
 
 // Import modules
 import config from './config/index.js';
@@ -19,6 +20,8 @@ import { initDebugHandlers } from './socket/debug.js';
 import { initializeWorldItems } from './utils/worldItems.js';
 import chunkManager from './config/chunks.js';
 import initChunkHandlers from './socket/chunks.js';
+import { initResourceHandlers } from './socket/resources.js';
+import { initShops, initShopHandlers } from './socket/shops.js';
 
 // Load environment variables
 dotenv.config();
@@ -78,6 +81,21 @@ initDebugHandlers(io, players, worldItems);
 
 // Initialize chunk handlers
 initChunkHandlers(io, chunkManager);
+
+// Initialize resource handlers
+initResourceHandlers(io, players);
+
+// Initialize gold module with db instance
+try {
+  initGoldModule(db);
+  console.log('Gold system initialized successfully');
+} catch (error) {
+  console.error('Error initializing gold system:', error);
+}
+
+// Initialize shop system
+initShops();
+initShopHandlers(io, players);
 
 // Start the server
 const PORT = process.env.PORT || 3000;

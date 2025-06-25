@@ -1,10 +1,10 @@
 // public/js/ecs/systems/characterSystem.js
-import Logger from '../../utils/logger.js';
+;
 
 export class CharacterSystem {
   constructor() { // entityManager (world) will be passed during system update
     this.name = 'character'; // System name, can be used for ordering or debugging
-    Logger.debug(Logger.LogCategories.SYSTEM, 'CharacterSystem', 'Character system initialized');
+    console.log( 'CharacterSystem', 'Character system initialized');
   }
 
   update(world, deltaTime) {
@@ -24,7 +24,7 @@ export class CharacterSystem {
 
         characterControllerComponent.controller.Update(entity.id, deltaTime, movementComponent, transformComponent);
       } else {
-        Logger.warn(Logger.LogCategories.ENTITY, 'CharacterSystem', `Entity ID: ${entity.id} missing component(s) for update`, {
+        console.log( 'CharacterSystem', `Entity ID: ${entity.id} missing component(s) for update`, {
           hasController: Boolean(characterControllerComponent && characterControllerComponent.controller),
           hasMovement: Boolean(movementComponent),
           hasTransform: Boolean(transformComponent)

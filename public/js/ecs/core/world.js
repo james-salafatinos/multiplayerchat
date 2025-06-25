@@ -95,4 +95,23 @@ export class World {
             entity.active && entity.hasComponent(componentName)
         ) || null;
     }
+    
+    /**
+     * Find entities that have all the specified component types
+     * @param {Array<Function>} componentTypes - Array of component constructor functions
+     * @returns {Array<number>} - Array of entity IDs with all component types
+     */
+    queryEntities(componentTypes) {
+        return this.entities
+            .filter(entity => {
+                if (!entity.active) return false;
+                
+                // Check if entity has all required components
+                return componentTypes.every(ComponentType => {
+                    const componentName = ComponentType.name;
+                    return entity.hasComponent(componentName);
+                });
+            })
+            .map(entity => entity.id); // Return array of entity IDs
+    }
 }

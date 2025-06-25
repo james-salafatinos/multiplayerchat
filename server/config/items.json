@@ -36,5 +36,65 @@
     "effects": {
       "heal": 25
     }
+  },
+  {
+    "id": "stone",
+    "name": "Stone",
+    "description": "A common material found in rocks.",
+    "gltfPath": "models/items/resources/stone.glb",
+    "inventoryIconPath": "img/items/icons/stone_icon.png",
+    "tradeable": true,
+    "stackable": true,
+    "maxStack": 64,
+    "type": "resource",
+    "value": 2
+  },
+  {
+    "id": "copper_ore",
+    "name": "Copper Ore",
+    "description": "An ore that can be sold for gold.",
+    "gltfPath": "models/items/resources/copper_ore.glb",
+    "inventoryIconPath": "img/items/icons/copper_ore_icon.png",
+    "tradeable": true,
+    "stackable": true,
+    "maxStack": 64,
+    "type": "resource",
+    "value": 5
+  },
+  {
+    "id": "iron_ore",
+    "name": "Iron Ore",
+    "description": "A valuable ore that can be sold for gold.",
+    "gltfPath": "models/items/resources/iron_ore.glb",
+    "inventoryIconPath": "img/items/icons/iron_ore_icon.png",
+    "tradeable": true,
+    "stackable": true,
+    "maxStack": 64,
+    "type": "resource",
+    "value": 10
+  },
+  {
+    "id": "wood_logs",
+    "name": "Wood Logs",
+    "description": "Logs harvested from trees.",
+    "gltfPath": "models/items/resources/wood_logs.glb",
+    "inventoryIconPath": "img/items/icons/wood_logs_icon.png",
+    "tradeable": true,
+    "stackable": true,
+    "maxStack": 64,
+    "type": "resource",
+    "value": 3
+  },
+  {
+    "id": "oak_logs",
+    "name": "Oak Logs",
+    "description": "High quality logs from oak trees.",
+    "gltfPath": "models/items/resources/oak_logs.glb",
+    "inventoryIconPath": "img/items/icons/oak_logs_icon.png",
+    "tradeable": true,
+    "stackable": true,
+    "maxStack": 64,
+    "type": "resource",
+    "value": 8
   }
 ]

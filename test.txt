@@ -1,0 +1,213 @@
+
++---public
+�   �   debug.html
+�   �   index.html
+�   �   login.html
+�   �   signup.html
+�   �   
+�   +---css
+�   �       auth.css
+�   �       context-menu.css
+�   �       resource.css
+�   �       shop.css
+�   �       skills-panel.css
+�   �       skills.css
+�   �       style.css
+�   �       trade-window.css
+�   �       
+�   +---img
+�   �   +---items
+�   �       +---icons
+�   �               basic_item_icon.png
+�   �               default_cube_icon.png
+�   �               health_potion_small_icon.png
+�   �               rocks_large_icon.png
+�   �               tree_small.png
+�   �               
+�   +---js
+�   �   �   app.js
+�   �   �   chat.js
+�   �   �   contextMenu.js
+�   �   �   debug.js
+�   �   �   network.js
+�   �   �   three-setup.js
+�   �   �   
+�   �   +---admin
+�   �   �       adminPanel.js
+�   �   �       
+�   �   +---auth
+�   �   �       auth.js
+�   �   �       login.js
+�   �   �       signup.js
+�   �   �       
+�   �   +---character
+�   �   �       character-controller.js
+�   �   �       character-input.js
+�   �   �       state-machine.js
+�   �   �       
+�   �   +---ecs
+�   �   �   +---components
+�   �   �   �       characterControllerComponent.js
+�   �   �   �       chatBubbleComponent.js
+�   �   �   �       chunkComponent.js
+�   �   �   �       index.js
+�   �   �   �       interactableComponent.js
+�   �   �   �       inventoryComponent.js
+�   �   �   �       itemComponent.js
+�   �   �   �       meshComponent.js
+�   �   �   �       movementComponent.js
+�   �   �   �       networkSyncComponent.js
+�   �   �   �       playerComponent.js
+�   �   �   �       resourceComponent.js
+�   �   �   �       rotationComponent.js
+�   �   �   �       shopComponent.js
+�   �   �   �       skillsComponent.js
+�   �   �   �       transformComponent.js
+�   �   �   �       
+�   �   �   +---core
+�   �   �   �       component.js
+�   �   �   �       entity.js
+�   �   �   �       index.js
+�   �   �   �       system.js
+�   �   �   �       world.js
+�   �   �   �       
+�   �   �   +---entities
+�   �   �   �       createBasicItemEntity.js
+�   �   �   �       createChunkEntity.js
+�   �   �   �       createCubeEntity.js
+�   �   �   �       createDefaultItemEntity.js
+�   �   �   �       createGroundEntity.js
+�   �   �   �       createItemEntity.js
+�   �   �   �       createPlayerEntity.js
+�   �   �   �       createResourceEntity.js
+�   �   �   �       index.js
+�   �   �   �       
+�   �   �   +---systems
+�   �   �           CameraSystem.js
+�   �   �           characterSystem.js
+�   �   �           ChatBubbleSystem.js
+�   �   �           ChunkSystem.js
+�   �   �           ContextMenuSystem.js
+�   �   �           index.js
+�   �   �           InventorySystem.js
+�   �   �           MovementSystem.js
+�   �   �           RenderSystem.js
+�   �   �           ResourceSystem.js
+�   �   �           RotationSystem.js
+�   �   �           ShopSystem.js
+�   �   �           SkillsSystem.js
+�   �   �           
+�   �   +---modules
+�   �   �       FBXLoader.js
+�   �   �       fflate.module.js
+�   �   �       NURBSCurve.js
+�   �   �       NURBSUtils.js
+�   �   �       
+�   �   +---trade
+�   �   �       index.js
+�   �   �       inventoryInteraction.js
+�   �   �       tradeEvents.js
+�   �   �       tradeItems.js
+�   �   �       tradeRequests.js
+�   �   �       tradeUI.js
+�   �   �       tradeWindow.js
+�   �   �       utils.js
+�   �   �       
+�   �   +---utils
+�   �           assetLoader.js
+�   �           notifications.js
+�   �           
+�   +---models
+�       +---buildings
+�       �   +---textures
+�       �           colormap.png
+�       �           
+�       +---character
+�       �       dance.fbx
+�       �       idle.fbx
+�       �       model.fbx
+�       �       run.fbx
+�       �       walk.fbx
+�       �       
+�       +---ground
+�       �   �   ground.glb
+�       �   �   
+�       �   +---textures
+�       �           colormap.png
+�       �           
+�       +---items
+�       �   �   basic_item.glb
+�       �   �   default_cube.glb
+�       �   �   
+�       �   +---potions
+�       �   �   �   health_potion_small.glb
+�       �   �   �   
+�       �   �   +---textures
+�       �   �           colormap.png
+�       �   �           
+�       �   +---textures
+�       �           colormap.png
+�       �           
+�       +---rocks
+�       �   �   rocks_large.glb
+�       �   �   
+�       �   +---textures
+�       �           colormap.png
+�       �           
+�       +---trees
+�           �   tree-small.glb
+�           �   
+�           +---textures
+�                   colormap.png
+�                   
++---server
+    �   server.js
+    �   sessions.db
+    �   
+    +---config
+    �   �   chunks.js
+    �   �   index.js
+    �   �   items.json
+    �   �   resources.js
+    �   �   shops.js
+    �   �   
+    �   +---world
+    �           chunk_-1_-1.json
+    �           chunk_-1_-10.json
+    ...
+    �           chunk_9_5.json
+    �           chunk_undefined_undefined.json
+    �           
+    +---db
+    �       gold.js
+    �       index.js
+    �       migrate.js
+    �       
+    +---game
+    �       resourceManager.js
+    �       shopManager.js
+    �       
+    +---routes
+    �       admin.js
+    �       auth.js
+    �       debug.js
+    �       index.js
+    �       
+    +---socket
+    �       admin.js
+    �       chat.js
+    �       chunks.js
+    �       debug.js
+    �       index.js
+    �       inventory.js
+    �       player.js
+    �       resources.js
+    �       shops.js
+    �       skills.js
+    �       trade.js
+    �       
+    +---utils
+            generateWorldChunks.js
+            itemManager.js
+            worldItems.js
+            

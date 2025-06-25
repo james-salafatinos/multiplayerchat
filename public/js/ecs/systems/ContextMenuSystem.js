@@ -6,7 +6,7 @@ import { getCamera, getScene } from '../../three-setup.js';
 import { getContextMenuManager } from '../../contextMenu.js';
 import * as THREE from 'three';
 import { requestTrade } from '../../trade/index.js';
-import Logger from '../../utils/logger.js';
+;
 
 /**
  * Context Menu System
@@ -30,7 +30,7 @@ export class ContextMenuSystem extends System {
         // Listen for context menu requests
         document.addEventListener('context-menu-requested', this.handleContextMenuRequested.bind(this));
         
-        Logger.info(Logger.LogCategories.SYSTEM, 'ContextMenuSystem', 'Initialized');
+        console.log( 'ContextMenuSystem', 'Initialized');
     }
     
     /**
@@ -52,7 +52,7 @@ export class ContextMenuSystem extends System {
         const scene = getScene();
         const intersects = this.raycaster.intersectObjects(scene.children, true);
         
-        Logger.debug(Logger.LogCategories.INPUT, 'ContextMenuSystem', `Raycaster found ${intersects.length} intersections`);
+        console.log( 'ContextMenuSystem', `Raycaster found ${intersects.length} intersections`);
         
         // Find what was clicked
         let objectHandled = false;
@@ -62,20 +62,20 @@ export class ContextMenuSystem extends System {
             const intersect = intersects[0];
             const object = intersect.object;
             
-            Logger.debug(Logger.LogCategories.INPUT, 'ContextMenuSystem', 'Intersected object', { 
+            console.log( 'ContextMenuSystem', 'Intersected object', { 
                 name: object.name,
                 type: object.type
             });
             
             // Check if object has userData with entity information
             if (object.userData && object.userData.entityId) {
-                Logger.debug(Logger.LogCategories.ENTITY, 'ContextMenuSystem', `Found entityId in userData: ${object.userData.entityId}`);
+                console.log( 'ContextMenuSystem', `Found entityId in userData: ${object.userData.entityId}`);
                 
                 // Find the entity in the world
                 const entity = this.findEntityByMesh(object);
                 
                 if (entity) {
-                    Logger.debug(Logger.LogCategories.ENTITY, 'ContextMenuSystem', `Found entity: ${entity.id}`, {
+                    console.log( 'ContextMenuSystem', `Found entity: ${entity.id}`, {
                         hasMeshComponent: entity.hasComponent('MeshComponent'),
                         hasPlayerComponent: entity.hasComponent('PlayerComponent'),
                         hasItemComponent: entity.hasComponent('ItemComponent')
@@ -135,7 +135,7 @@ export class ContextMenuSystem extends System {
             const entityId = mesh.userData.entityId;
             const entity = this.world.entities.find(e => e.id === entityId);
             if (entity) {
-                Logger.trace(Logger.LogCategories.ENTITY, 'ContextMenuSystem', `Found entity by userData.entityId: ${entityId}`);
+                console.log( 'ContextMenuSystem', `Found entity by userData.entityId: ${entityId}`);
                 return entity;
             }
         }
@@ -147,7 +147,7 @@ export class ContextMenuSystem extends System {
                 const entityId = currentObject.userData.entityId;
                 const entity = this.world.entities.find(e => e.id === entityId);
                 if (entity) {
-                    Logger.trace(Logger.LogCategories.ENTITY, 'ContextMenuSystem', `Found entity by parent userData.entityId: ${entityId}`);
+                    console.log( 'ContextMenuSystem', `Found entity by parent userData.entityId: ${entityId}`);
                     return entity;
                 }
             }
@@ -159,13 +159,13 @@ export class ContextMenuSystem extends System {
             if (entity.hasComponent('MeshComponent')) {
                 const meshComponent = entity.getComponent('MeshComponent');
                 if (meshComponent.mesh === mesh || meshComponent.mesh.children.includes(mesh)) {
-                    Logger.trace(Logger.LogCategories.ENTITY, 'ContextMenuSystem', 'Found entity by direct mesh comparison');
+                    console.log( 'ContextMenuSystem', 'Found entity by direct mesh comparison');
                     return entity;
                 }
             }
         }
         
-        Logger.debug(Logger.LogCategories.ENTITY, 'ContextMenuSystem', 'Could not find entity for mesh', { meshName: mesh.name });
+        console.log( 'ContextMenuSystem', 'Could not find entity for mesh', { meshName: mesh.name });
         return null;
     }
     
@@ -256,7 +256,7 @@ export class ContextMenuSystem extends System {
         // Find the item entity by its component
         const itemEntity = this.findEntityByItemComponent(itemComponent);
         if (!itemEntity) {
-            Logger.error(Logger.LogCategories.ENTITY, 'ContextMenuSystem', 'Could not find entity for item component', { 
+            console.log( 'ContextMenuSystem', 'Could not find entity for item component', { 
                 itemName: itemComponent.name, 
                 itemType: itemComponent.type 
             });
@@ -309,14 +309,14 @@ export class ContextMenuSystem extends System {
                                             const distance = playerTransform.position.distanceTo(itemTransform.position);
                                             const pickupRange = interactableComponent.range || 1.5;
                                             
-                                            Logger.debug(Logger.LogCategories.PLAYER, 'ContextMenuSystem', `Distance to item: ${distance.toFixed(2)}, Pickup range: ${pickupRange}`);
+                                            console.log( 'ContextMenuSystem', `Distance to item: ${distance.toFixed(2)}, Pickup range: ${pickupRange}`);
                                             
                                             if (distance <= pickupRange) {
                                                 // We're close enough, trigger the interaction
-                                                Logger.debug(Logger.LogCategories.PLAYER, 'ContextMenuSystem', 'Player reached item, triggering interaction');
+                                                console.log( 'ContextMenuSystem', 'Player reached item, triggering interaction');
                                                 interactableComponent.onInteract(playerEntity, movementComponent.targetItem);
                                             } else {
-                                                Logger.warn(Logger.LogCategories.PLAYER, 'ContextMenuSystem', `Player not close enough to item (${distance.toFixed(2)} units)`, {
+                                                console.log( 'ContextMenuSystem', `Player not close enough to item (${distance.toFixed(2)} units)`, {
                                                     requiredRange: pickupRange
                                                 });
                                             }
@@ -484,12 +484,26 @@ export class ContextMenuSystem extends System {
                                         
                                     case 'chopTree':
                                         console.log('Chopping tree');
-                                        // Implement woodcutting logic
+                                        // Call ResourceSystem to start harvesting
+                                        const resourceSystemForChop = this.world.systems.find(system => system.constructor.name === 'ResourceSystem');
+                                        if (resourceSystemForChop) {
+                                            console.log('Found ResourceSystem, calling startHarvesting with action "chop"');
+                                            resourceSystemForChop.startHarvesting(entity.id, 'chop');
+                                        } else {
+                                            console.log('ResourceSystem not found!');
+                                        }
                                         break;
                                         
                                     case 'mineRock':
                                         console.log('Mining rock');
-                                        // Implement mining logic
+                                        // Call ResourceSystem to start harvesting
+                                        const resourceSystemForMine = this.world.systems.find(system => system.constructor.name === 'ResourceSystem');
+                                        if (resourceSystemForMine) {
+                                            console.log('Found ResourceSystem, calling startHarvesting with action "mine"');
+                                            resourceSystemForMine.startHarvesting(entity.id, 'mine');
+                                        } else {
+                                            console.log('ResourceSystem not found!');
+                                        }
                                         break;
                                         
                                     default:

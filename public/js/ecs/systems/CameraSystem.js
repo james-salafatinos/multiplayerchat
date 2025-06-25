@@ -4,7 +4,7 @@
 import { System } from '../core/index.js';
 import { getCamera, getControls } from '../../three-setup.js';
 import * as THREE from 'three';
-import Logger from '../../utils/logger.js';
+;
 
 /**
  * Camera System
@@ -27,9 +27,9 @@ export class CameraSystem extends System {
         if (this.camera && this.controls) {
             this.initialCameraVector.subVectors(this.camera.position, this.controls.target);
             this.initialCameraVector.normalize().multiplyScalar(this.fixedDistance);
-            Logger.info(Logger.LogCategories.SYSTEM, 'CameraSystem', 'Camera system initialized successfully');
+            console.log( 'CameraSystem', 'Camera system initialized successfully');
         } else {
-            Logger.warn(Logger.LogCategories.SYSTEM, 'CameraSystem', 'Failed to initialize camera or controls');
+            console.log( 'CameraSystem', 'Failed to initialize camera or controls');
         }
         
         // Ensure orbit controls are properly configured

@@ -1,6 +1,6 @@
 // public/js/character/state-machine.js
 import * as THREE from 'three'; // Assuming THREE is available as a module
-import Logger from '../utils/logger.js';
+
 
 export class FiniteStateMachine {
   constructor() {

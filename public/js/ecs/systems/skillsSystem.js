@@ -3,7 +3,7 @@
 
 import { System } from '../core/index.js';
 import { SkillsComponent } from '../components/index.js';
-import Logger from '../../utils/logger.js';
+;
 /**
  * Skills System
  * Manages player skills, XP, and the skills UI
@@ -40,7 +40,7 @@ export class SkillsSystem extends System {
         if (this.socket) {
             // Handle direct skills updates for the local player
             this.socket.on('skills:update', (data) => {
-                Logger.info(Logger.LogCategories.PLAYER, 'SkillsSystem', 'Received skills update from server', data);
+                console.log( 'SkillsSystem', 'Received skills update from server', data);
                 
                 // Store the latest skills data
                 this.latestSkillsData = data.skills;
@@ -61,7 +61,7 @@ export class SkillsSystem extends System {
                 
                 // If world is not available yet, queue the update for later entity processing
                 if (!this.world) {
-                    Logger.warn(Logger.LogCategories.SYSTEM, 'SkillsSystem', 'skills:update: this.world is not yet available. Queuing update for later entity processing.');
+                    console.log( 'SkillsSystem', 'skills:update: this.world is not yet available. Queuing update for later entity processing.');
                     this.pendingSkillsUpdates.push({ type: 'skills:update', data });
                     return;
                 }
@@ -71,14 +71,14 @@ export class SkillsSystem extends System {
             
             // Handle skills updates for specific players (from admin panel)
             this.socket.on('skills:player:update', (data) => {
-                Logger.info(Logger.LogCategories.PLAYER, 'SkillsSystem', 'Received player skills update from server', data);
+                console.log( 'SkillsSystem', 'Received player skills update from server', data);
                 
                 // Get current user's username from localStorage
                 const currentUsername = localStorage.getItem('username');
                 
                 // If this update is for the current user, update the UI directly
                 if (currentUsername && data.username === currentUsername) {
-                    Logger.info(Logger.LogCategories.PLAYER, 'SkillsSystem', `Received skills update for current user ${currentUsername}`);
+                    console.log( 'SkillsSystem', `Received skills update for current user ${currentUsername}`);
                     
                     // Store the latest skills data
                     this.latestSkillsData = data.skills;
@@ -100,7 +100,7 @@ export class SkillsSystem extends System {
                 
                 // If world is not available yet, queue the update for later entity processing
                 if (!this.world) {
-                    Logger.warn(Logger.LogCategories.SYSTEM, 'SkillsSystem', 'skills:player:update: this.world is not yet available. Queuing update for later entity processing.');
+                    console.log( 'SkillsSystem', 'skills:player:update: this.world is not yet available. Queuing update for later entity processing.');
                     this.pendingSkillsUpdates.push({ type: 'skills:player:update', data });
                     return;
                 }
@@ -115,18 +115,18 @@ export class SkillsSystem extends System {
      * @param {World} world - The world this system belongs to
      */
     init(world) {
-        Logger.info(Logger.LogCategories.SYSTEM, 'SkillsSystem', 'Initializing with world', world);
+        console.log( 'SkillsSystem', 'Initializing with world', world);
         this.world = world;
         
         // Process any pending skills updates that were received before the world was initialized
         if (this.pendingSkillsUpdates.length > 0) {
-            Logger.info(Logger.LogCategories.PLAYER, 'SkillsSystem', `Processing ${this.pendingSkillsUpdates.length} pending skills updates`);
+            console.log( 'SkillsSystem', `Processing ${this.pendingSkillsUpdates.length} pending skills updates`);
             
             // Wait a short time to ensure the world is fully initialized with player entities
             setTimeout(() => {
                 // Process each pending update
                 this.pendingSkillsUpdates.forEach(update => {
-                    Logger.debug(Logger.LogCategories.PLAYER, 'SkillsSystem', `Processing pending ${update.type} update`, update.data);
+                    console.log( 'SkillsSystem', `Processing pending ${update.type} update`, update.data);
                     
                     if (update.type === 'skills:update') {
                         this.processSkillsUpdate(update.data);
@@ -219,7 +219,7 @@ export class SkillsSystem extends System {
                 });
             }
         } else {
-            Logger.warn(Logger.LogCategories.PLAYER, 'SkillsSystem', 'processSkillsUpdate: Local player not found.');
+            console.log( 'SkillsSystem', 'processSkillsUpdate: Local player not found.');
         }
     }
     
@@ -233,7 +233,7 @@ export class SkillsSystem extends System {
         
         // Check if this update is for the current user
         if (currentUsername && data.username === currentUsername) {
-            Logger.info(Logger.LogCategories.PLAYER, 'SkillsSystem', `Received skills update for current user ${currentUsername}`);
+            console.log( 'SkillsSystem', `Received skills update for current user ${currentUsername}`);
             
             // Find local player entity
             const localPlayerEntity = this.world.entities.find(entity => 
@@ -243,7 +243,7 @@ export class SkillsSystem extends System {
             );
             
             if (localPlayerEntity) {
-                Logger.info(Logger.LogCategories.PLAYER, 'SkillsSystem', `Found local player entity, updating skills for ${currentUsername}`);
+                console.log( 'SkillsSystem', `Found local player entity, updating skills for ${currentUsername}`);
                 // Make sure player has SkillsComponent
                 if (!localPlayerEntity.hasComponent('SkillsComponent')) {
                     localPlayerEntity.addComponent(new SkillsComponent());
@@ -268,10 +268,10 @@ export class SkillsSystem extends System {
                     });
                 }
             } else {
-                Logger.warn(Logger.LogCategories.PLAYER, 'SkillsSystem', `Local player entity not found for username ${currentUsername}`);
+                console.log( 'SkillsSystem', `Local player entity not found for username ${currentUsername}`);
             }
         } else {
-            Logger.debug(Logger.LogCategories.PLAYER, 'SkillsSystem', `Received skills update for ${data.username}, but current user is ${currentUsername || 'unknown'}, ignoring`);
+            console.log( 'SkillsSystem', `Received skills update for ${data.username}, but current user is ${currentUsername || 'unknown'}, ignoring`);
         }
     }
     
@@ -328,7 +328,7 @@ export class SkillsSystem extends System {
      * Set up the skills UI
      */
     setupSkillsUI() {
-        Logger.info(Logger.LogCategories.PLAYER, 'SkillsSystem', 'Setting up skills UI');
+        console.log( 'SkillsSystem', 'Setting up skills UI');
         
         // Create skills toggle button if it doesn't exist
         if (!document.getElementById('skills-toggle')) {
@@ -402,7 +402,7 @@ export class SkillsSystem extends System {
             skillsPanel.appendChild(skillsContent);
             document.body.appendChild(skillsPanel);
             
-            Logger.debug(Logger.LogCategories.PLAYER, 'SkillsSystem', 'Skills panel created');
+            console.log( 'SkillsSystem', 'Skills panel created');
         }
         
         // Set up toggle button click handler
@@ -421,10 +421,10 @@ export class SkillsSystem extends System {
                     
                     // If we have latest skills data, update the UI
                     if (this.latestSkillsData) {
-                        Logger.debug(Logger.LogCategories.PLAYER, 'SkillsSystem', 'Updating skills panel with latest data on open');
+                        console.log( 'SkillsSystem', 'Updating skills panel with latest data on open');
                         this.updateSkillsUIDirectly(this.latestSkillsData);
                     } else {
-                        Logger.debug(Logger.LogCategories.PLAYER, 'SkillsSystem', 'No latest skills data available to update panel');
+                        console.log( 'SkillsSystem', 'No latest skills data available to update panel');
                         // Request skills data from server
                         if (this.socket) {
                             this.socket.emit('skills:request');
@@ -435,7 +435,7 @@ export class SkillsSystem extends System {
                 }
             });
             
-            Logger.debug(Logger.LogCategories.PLAYER, 'SkillsSystem', 'Skills toggle button handler set up');
+            console.log( 'SkillsSystem', 'Skills toggle button handler set up');
         }
     }
     
@@ -444,10 +444,10 @@ export class SkillsSystem extends System {
      * @param {Object} skillsData - The skills data from the server
      */
     updateSkillsUIDirectly(skillsData) {
-        Logger.debug(Logger.LogCategories.PLAYER, 'SkillsSystem', 'Updating skills UI directly with data', skillsData);
+        console.log( 'SkillsSystem', 'Updating skills UI directly with data', skillsData);
         
         if (!skillsData) {
-            Logger.warn(Logger.LogCategories.PLAYER, 'SkillsSystem', 'No skills data provided for direct UI update');
+            console.log( 'SkillsSystem', 'No skills data provided for direct UI update');
             return;
         }
         
@@ -478,7 +478,7 @@ export class SkillsSystem extends System {
     updateSkillDisplay(skillName, level, xp) {
         const skillElement = document.getElementById(`skill-${skillName}`);
         if (!skillElement) {
-            Logger.warn(Logger.LogCategories.PLAYER, 'SkillsSystem', `Skill element for ${skillName} not found`);
+            console.log( 'SkillsSystem', `Skill element for ${skillName} not found`);
             return;
         }
         

@@ -8,7 +8,7 @@ import { System } from '../core/system.js';
 import { ChunkComponent, PlayerComponent, TransformComponent } from '../components/index.js';
 import { createChunk } from '../entities/createChunkEntity.js';
 import { socket } from '../../network.js';
-import Logger from '../../utils/logger.js';
+;
 
 export class ChunkSystem extends System {
     /**
@@ -54,7 +54,7 @@ export class ChunkSystem extends System {
                     { x: player.position.x, y: player.position.y, z: player.position.z },
                     this.chunkSize
                 );
-                Logger.info(Logger.LogCategories.CHUNK, 'ChunkSystem', `Player joined at position ${player.position.x}, ${player.position.y}, ${player.position.z}, loading chunks around ${chunkX}, ${chunkY}`);
+                console.log( 'ChunkSystem', `Player joined at position ${player.position.x}, ${player.position.y}, ${player.position.z}, loading chunks around ${chunkX}, ${chunkY}`);
                 this.loadChunksAroundPlayer(chunkX, chunkY);
             }
         });
@@ -67,7 +67,7 @@ export class ChunkSystem extends System {
     _setupSocketListeners() {
         // Listen for chunk data from server
         socket.on('chunk data', (data) => {
-            Logger.debug(Logger.LogCategories.CHUNK, 'ChunkSystem', 'Received chunk data', data);
+            // console.log( 'ChunkSystem', 'Received chunk data', data);
             
             const { chunkX, chunkY, data: chunkData } = data;
             const key = `${chunkX},${chunkY}`;
@@ -79,14 +79,14 @@ export class ChunkSystem extends System {
             if (!this.loadedChunks.has(key) && chunkData) {
                 this.createChunkFromData(chunkX, chunkY, chunkData);
             } else if (!chunkData) {
-                Logger.error(Logger.LogCategories.CHUNK, 'ChunkSystem', `Received invalid chunk data for ${chunkX}, ${chunkY}`);
+                console.log( 'ChunkSystem', `Received invalid chunk data for ${chunkX}, ${chunkY}`);
             }
         });
         
         // Listen for multiple chunks data response
         socket.on('chunks data', (data) => {
             const { chunks } = data;
-            Logger.debug(Logger.LogCategories.CHUNK, 'ChunkSystem', `Received data for ${chunks.length} chunks`);
+            console.log( 'ChunkSystem', `Received data for ${chunks.length} chunks`);
             
             if (this.world) {
                 chunks.forEach((chunk) => {
@@ -106,7 +106,7 @@ export class ChunkSystem extends System {
         // Listen for chunk errors
         socket.on('chunk error', (data) => {
             const { chunkX, chunkY, error } = data;
-            Logger.error(Logger.LogCategories.CHUNK, 'ChunkSystem', `Error loading chunk ${chunkX}, ${chunkY}: ${error}`);
+            console.log( 'ChunkSystem', `Error loading chunk ${chunkX}, ${chunkY}: ${error}`);
             
             // Remove from pending requests
             if (chunkX !== undefined && chunkY !== undefined) {
@@ -168,7 +168,7 @@ export class ChunkSystem extends System {
         // Calculate priority for each chunk based on distance from player
         const chunksToLoad = [];
         
-        Logger.debug(Logger.LogCategories.CHUNK, 'ChunkSystem', `Loading chunks around (${centerX}, ${centerY}) with loadDistance=${this.loadDistance}`);
+        // console.log( 'ChunkSystem', `Loading chunks around (${centerX}, ${centerY}) with loadDistance=${this.loadDistance}`);
         
         // Load chunks in a square around the player
         for (let x = centerX - this.loadDistance; x <= centerX + this.loadDistance; x++) {
@@ -191,7 +191,7 @@ export class ChunkSystem extends System {
         const delayBetweenRequests = immediate ? 10 : 50; // ms
         
         if (chunksToLoad.length > 0) {
-            Logger.debug(Logger.LogCategories.CHUNK, 'ChunkSystem', `Queueing ${chunksToLoad.length} chunks to load around (${centerX}, ${centerY})`);
+            // console.log( 'ChunkSystem', `Queueing ${chunksToLoad.length} chunks to load around (${centerX}, ${centerY})`);
         }
         
         chunksToLoad.forEach((chunk, index) => {
@@ -229,7 +229,7 @@ export class ChunkSystem extends System {
         
         for (const [key, timestamp] of this.pendingChunks.entries()) {
             if (now - timestamp > timeout) {
-                Logger.warn(Logger.LogCategories.CHUNK, 'ChunkSystem', `Cleaning up stale pending chunk request: ${key}`);
+                console.log( 'ChunkSystem', `Cleaning up stale pending chunk request: ${key}`);
                 this.pendingChunks.delete(key);
             }
         }
@@ -253,7 +253,7 @@ export class ChunkSystem extends System {
             return;
         }
         
-        Logger.debug(Logger.LogCategories.CHUNK, 'ChunkSystem', `Requesting chunk data for ${chunkX}, ${chunkY}`);
+        // console.log( 'ChunkSystem', `Requesting chunk data for ${chunkX}, ${chunkY}`);
         
         // Mark as pending with current timestamp
         this.pendingChunks.set(key, Date.now());
@@ -264,7 +264,7 @@ export class ChunkSystem extends System {
         // Set a timeout to handle cases where the server doesn't respond
         setTimeout(() => {
             if (this.pendingChunks.has(key)) {
-                Logger.error(Logger.LogCategories.CHUNK, 'ChunkSystem', `Timeout waiting for chunk ${chunkX}, ${chunkY} from server`);
+                console.log( 'ChunkSystem', `Timeout waiting for chunk ${chunkX}, ${chunkY} from server`);
                 this.pendingChunks.delete(key);
             }
         }, 5000); // 5 second timeout
@@ -286,7 +286,7 @@ export class ChunkSystem extends System {
         }
         
         if (!chunkData) {
-            Logger.error(Logger.LogCategories.CHUNK, 'ChunkSystem', `Cannot create chunk at ${chunkX}, ${chunkY} - invalid chunk data`);
+            console.log( 'ChunkSystem', `Cannot create chunk at ${chunkX}, ${chunkY} - invalid chunk data`);
             return null;
         }
         
@@ -300,7 +300,7 @@ export class ChunkSystem extends System {
         
         // Make sure chunk entity was created successfully
         if (!chunkEntity) {
-            Logger.error(Logger.LogCategories.CHUNK, 'ChunkSystem', `Failed to create chunk entity at ${chunkX}, ${chunkY}`);
+            console.log( 'ChunkSystem', `Failed to create chunk entity at ${chunkX}, ${chunkY}`);
             return null;
         }
         
@@ -347,6 +347,6 @@ export class ChunkSystem extends System {
         // Remove from tracking map
         this.loadedChunks.delete(key);
         
-        Logger.info(Logger.LogCategories.CHUNK, 'ChunkSystem', `Unloaded chunk: ${key}`);
+        console.log( 'ChunkSystem', `Unloaded chunk: ${key}`);
     }
 }

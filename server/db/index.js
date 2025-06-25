@@ -192,4 +192,5 @@ const statements = {
   updateMagicXp: db.prepare('UPDATE player_skills SET magic_xp = magic_xp + ? WHERE user_id = ?')
 };
 
+// Export the database and statements
 export { db, statements };

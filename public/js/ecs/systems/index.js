@@ -12,11 +12,13 @@ export { MovementSystem } from './MovementSystem.js';
 export { RenderSystem } from './RenderSystem.js';
 export { RotationSystem } from './RotationSystem.js';
 export { ChunkSystem } from './ChunkSystem.js';
+export { ResourceSystem } from './ResourceSystem.js';
+export { ShopSystem } from './ShopSystem.js';
 
 // Inventory Systems
 export { InventorySystem } from './InventorySystem.js';
 
 //Skills System
-export { SkillsSystem } from './SkillsSystem.js';
+export { SkillsSystem } from './skillsSystem.js';
 
-export { CharacterSystem } from './characterSystem.js';
+export { CharacterSystem } from './CharacterSystem.js';
