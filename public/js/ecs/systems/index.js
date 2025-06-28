@@ -5,7 +5,7 @@
 // Player Systems
 export { CameraSystem } from './CameraSystem.js';
 export { ChatBubbleSystem } from './ChatBubbleSystem.js';
-export { ContextMenuSystem } from './contextMenuSystem.js';
+export { ContextMenuSystem } from './ContextMenuSystem.js';
 
 // Game Systems
 export { MovementSystem } from './MovementSystem.js';
@@ -15,7 +15,7 @@ export { ChunkSystem } from './ChunkSystem.js';
 export { ResourceSystem } from './ResourceSystem.js';
 export { ShopSystem } from './ShopSystem.js';
 
-// Inventory Systems
+// Inventory Systems yo
 export { InventorySystem } from './InventorySystem.js';
 
 //Skills System
