@@ -7,6 +7,7 @@
 import { updateOfferedItems } from './tradeItems.js';
 import { updateTradeStatus, completeTrade, closeTradeWindow } from './tradeWindow.js';
 import { showNotification } from './utils.js';
+import gameLogger from '../utils/gameLogger.js';
 
 /**
  * Set up socket event listeners for trade events
@@ -21,10 +22,14 @@ export function setupTradeEventListeners() {
         if (data.accepted) {
             // Trade request was accepted, nothing to do as window is already open
             console.log(`Trade request accepted by ${window.activeTrade.remotePlayerName}`);
+            // Log trade acceptance
+            gameLogger.logTradeAction('started', window.activeTrade.remotePlayerName);
         } else {
             // Trade request was declined
             console.log(`Trade request declined by ${window.activeTrade.remotePlayerName}`);
             showNotification(`${window.activeTrade.remotePlayerName} declined your trade request.`);
+            // Log trade rejection
+            gameLogger.logTradeAction('declined', window.activeTrade.remotePlayerName);
             closeTradeWindow();
         }
     });
@@ -70,6 +75,11 @@ export function setupTradeEventListeners() {
             if (window.activeTrade.localAccepted && window.activeTrade.remoteAccepted) {
                 // Complete the trade
                 completeTrade();
+                // Log the trade completion
+                gameLogger.logTradeAction('completed', window.activeTrade.remotePlayerName);
+            } else {
+                // Log trade acceptance
+                gameLogger.logTradeAction('accepted', window.activeTrade.remotePlayerName);
             }
         }
     });
@@ -88,6 +98,9 @@ export function setupTradeEventListeners() {
         
         // Show notification
         showNotification('Trade cancelled');
+        
+        // Log trade cancellation
+        gameLogger.logTradeAction('cancelled', window.activeTrade.remotePlayerName);
     });
     
     // Listen for trade completion

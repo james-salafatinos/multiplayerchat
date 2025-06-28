@@ -257,12 +257,12 @@ export class BasicCharacterController {
     const playerComponent = this._params.playerComponent;
     const isRemotePlayer = playerComponent && !playerComponent.isLocalPlayer;
 
-    // Debug log for remote player animation issues
-    if (isRemotePlayer) {
-      console.log(
-        `[NET-ANIM-DBG] BasicCharacterController.Update: Remote entity ${entityId}, animations loaded: ${this._animationsLoaded}, isMoving: ${movementComponent?.isMoving}`
-      );
-    }
+    // // Debug log for remote player animation issues
+    // if (isRemotePlayer) {
+    //   console.log(
+    //     `[NET-ANIM-DBG] BasicCharacterController.Update: Remote entity ${entityId}, animations loaded: ${this._animationsLoaded}, isMoving: ${movementComponent?.isMoving}`
+    //   );
+    // }
 
     if (
       !this._target ||

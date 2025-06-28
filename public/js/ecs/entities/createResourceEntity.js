@@ -8,6 +8,7 @@ import {
     InteractableComponent 
 } from '../components/index.js';
 
+
 /**
  * Create a resource entity (rock or tree)
  * @param {World} world - The ECS world

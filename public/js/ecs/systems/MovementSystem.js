@@ -4,6 +4,7 @@
 import { System } from '../core/index.js';
 import { getCamera, getRenderer } from '../../three-setup.js';
 import * as THREE from 'three';
+import gameLogger from '../../utils/gameLogger.js';
 
 
 /**
@@ -169,6 +170,15 @@ export class MovementSystem extends System {
                         );
                         movementComponent.isMoving = true;
                         
+                        // Log player movement action
+                        if (gameLogger.socket && gameLogger.localPlayerId) {
+                            gameLogger.logPlayerMovement({
+                                x: this.targetPoint.x,
+                                y: 0,
+                                z: this.targetPoint.z
+                            });
+                        }
+                        
                         // console.log('Set target position to:', movementComponent.targetPosition);
                         
                         // Emit movement to server
@@ -246,6 +256,15 @@ export class MovementSystem extends System {
             movementComponent.isMoving = false;
             console.log('Reached target position');
             
+            // Only log arrival for local player to avoid spamming logs
+            const playerComponent = entity.getComponent('PlayerComponent');
+            if (playerComponent && playerComponent.isLocalPlayer) {
+                gameLogger.log(
+                    'Movement',
+                    `Arrived at destination (${Math.round(transformComponent.position.x * 10) / 10}, ${Math.round(transformComponent.position.z * 10) / 10})`
+                );
+            }
+            
             // Call onReachTarget callback if it exists
             if (typeof movementComponent.onReachTarget === 'function') {
                 console.log('Calling onReachTarget callback');
@@ -270,9 +289,23 @@ export class MovementSystem extends System {
             // console.log('Moved by:', movement, 'New position:', transformComponent.position.clone());
         }
         
-        // Face movement direction
+        // Face movement direction with smooth interpolation (0.2 s to reach target)
         if (direction.x !== 0 || direction.z !== 0) {
-            transformComponent.rotation.y = Math.atan2(direction.x, direction.z);
+            const desiredRotation = Math.atan2(direction.x, direction.z);
+            let currentRotation = transformComponent.rotation.y;
+
+            // Compute smallest angular difference
+            let deltaRot = desiredRotation - currentRotation;
+            deltaRot = Math.atan2(Math.sin(deltaRot), Math.cos(deltaRot)); // normalize to [-π, π]
+
+            // Interpolate towards the desired rotation – reach target in ~0.2 s
+            const t = Math.min(1, deltaTime / 0.1);
+            if (Math.abs(deltaRot) < 1e-3) {
+                // Close enough – snap to target
+                transformComponent.rotation.y = desiredRotation;
+            } else {
+                transformComponent.rotation.y = currentRotation + deltaRot * t;
+            }
         }
         
         // Sync position over network if entity has NetworkSyncComponent

@@ -53,6 +53,36 @@ body {
     color: #aaa;
 }
 
+/* Chat filter tabs */
+#chat-filter-tabs {
+    display: flex;
+    background-color: #1a1a2e;
+    border-bottom: 1px solid #444;
+}
+
+.chat-filter-tab {
+    flex: 1;
+    padding: 8px 0;
+    background-color: transparent;
+    border: none;
+    color: #aaa;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 3px solid transparent;
+}
+
+.chat-filter-tab:hover {
+    color: #e6e6e6;
+    background-color: rgba(42, 42, 64, 0.3);
+}
+
+.chat-filter-tab.active {
+    color: #e94560;
+    border-bottom: 3px solid #e94560;
+    font-weight: bold;
+}
+
 #chat-messages {
     flex: 1;
     overflow-y: auto;
@@ -120,6 +150,37 @@ body {
     padding: 5px 10px;
     border-radius: 10px;
     margin: 5px 0;
+}
+
+/* Game action messages */
+.game-action {
+    padding: 8px 12px;
+    margin: 4px 0;
+    border-radius: 12px;
+    max-width: 85%;
+    word-break: break-word;
+    animation: fadeIn 0.3s ease-in-out;
+    background-color: rgba(30, 60, 80, 0.7);
+    border: 1px solid rgba(100, 200, 255, 0.2);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.game-action:hover {
+    background-color: rgba(40, 70, 90, 0.9);
+}
+
+.game-action-type {
+    font-weight: bold;
+    color: #64c8ff;
+    margin-right: 8px;
+    font-size: 0.9em;
+}
+
+.player-name {
+    font-weight: bold;
+    color: #4dff88; /* Green color to distinguish from regular usernames */
+    margin-right: 8px;
+    font-size: 0.9em;
 }
 
 #chat-input-container {

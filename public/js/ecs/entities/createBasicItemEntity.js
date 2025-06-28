@@ -12,10 +12,9 @@ import {
     InteractableComponent
 } from '../components/index.js';
 import { getSocket } from '../../network.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
 import { createItemEntity } from './createItemEntity.js';
-// Create a loader instance to be reused
-const gltfLoader = new GLTFLoader();
+
 
 /**
  * Create a basic item that can be picked up

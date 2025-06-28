@@ -3,7 +3,7 @@
 
 import { System } from '../core/index.js';
 import { SkillsComponent } from '../components/index.js';
-;
+import gameLogger from '../../utils/gameLogger.js';
 /**
  * Skills System
  * Manages player skills, XP, and the skills UI
@@ -51,11 +51,24 @@ export class SkillsSystem extends System {
                 // Show notifications
                 if (data.xpGained) {
                     this.showXpNotification(data.xpGained.skill, data.xpGained.amount);
+                    
+                    // Log XP gain to game action log
+                    gameLogger.log(
+                        'Skills', 
+                        `Gained ${data.xpGained.amount} ${data.xpGained.skill.charAt(0).toUpperCase() + data.xpGained.skill.slice(1)} XP`
+                    );
                 }
                 
                 if (data.levelUps && data.levelUps.length > 0) {
                     data.levelUps.forEach(levelUp => {
                         this.showLevelUpNotification(levelUp.skill, levelUp.newLevel);
+                        
+                        // Log level up to game action log
+                        gameLogger.log(
+                            'Level Up', 
+                            `${levelUp.skill.charAt(0).toUpperCase() + levelUp.skill.slice(1)} level is now ${levelUp.newLevel}!`, 
+                            'achievement'
+                        );
                     });
                 }
                 
@@ -89,11 +102,24 @@ export class SkillsSystem extends System {
                     // Show notifications
                     if (data.xpGained) {
                         this.showXpNotification(data.xpGained.skill, data.xpGained.amount);
+                        
+                        // Log XP gain to game action log
+                        gameLogger.log(
+                            'Skills', 
+                            `Gained ${data.xpGained.amount} ${data.xpGained.skill.charAt(0).toUpperCase() + data.xpGained.skill.slice(1)} XP`
+                        );
                     }
                     
                     if (data.levelUps && data.levelUps.length > 0) {
                         data.levelUps.forEach(levelUp => {
                             this.showLevelUpNotification(levelUp.skill, levelUp.newLevel);
+                            
+                            // Log level up to game action log
+                            gameLogger.log(
+                                'Level Up', 
+                                `${levelUp.skill.charAt(0).toUpperCase() + levelUp.skill.slice(1)} level is now ${levelUp.newLevel}!`, 
+                                'achievement'
+                            );
                         });
                     }
                 }
@@ -210,12 +236,25 @@ export class SkillsSystem extends System {
             // Show XP gain notification if provided
             if (data.xpGained) {
                 this.showXpNotification(data.xpGained.skill, data.xpGained.amount);
+                
+                // Log XP gain to game action log
+                gameLogger.log(
+                    'Skills', 
+                    `Gained ${data.xpGained.amount} ${data.xpGained.skill.charAt(0).toUpperCase() + data.xpGained.skill.slice(1)} XP`
+                );
             }
             
             // Show level up notification if provided
             if (data.levelUps && data.levelUps.length > 0) {
                 data.levelUps.forEach(levelUp => {
                     this.showLevelUpNotification(levelUp.skill, levelUp.newLevel);
+                    
+                    // Log level up to game action log
+                    gameLogger.log(
+                        'Level Up', 
+                        `${levelUp.skill.charAt(0).toUpperCase() + levelUp.skill.slice(1)} level is now ${levelUp.newLevel}!`, 
+                        'achievement'
+                    );
                 });
             }
         } else {
@@ -259,12 +298,25 @@ export class SkillsSystem extends System {
                 // Show XP gain notification if provided
                 if (data.xpGained) {
                     this.showXpNotification(data.xpGained.skill, data.xpGained.amount);
+                    
+                    // Log XP gain to game action log
+                    gameLogger.log(
+                        'Skills', 
+                        `Gained ${data.xpGained.amount} ${data.xpGained.skill.charAt(0).toUpperCase() + data.xpGained.skill.slice(1)} XP`
+                    );
                 }
                 
                 // Show level up notification if provided
                 if (data.levelUps && data.levelUps.length > 0) {
                     data.levelUps.forEach(levelUp => {
                         this.showLevelUpNotification(levelUp.skill, levelUp.newLevel);
+                        
+                        // Log level up to game action log
+                        gameLogger.log(
+                            'Level Up', 
+                            `${levelUp.skill.charAt(0).toUpperCase() + levelUp.skill.slice(1)} level is now ${levelUp.newLevel}!`, 
+                            'achievement'
+                        );
                     });
                 }
             } else {

@@ -6,6 +6,7 @@ import { TransformComponent, ShopComponent, InteractableComponent } from '../com
 import { getContextMenuManager } from '../../contextMenu.js';
 import { getSocket } from '../../network.js';
 import { showNotification } from '../../utils/notifications.js';
+import gameLogger from '../../utils/gameLogger.js';
 
 export class ShopSystem extends System {
     constructor(world) {
@@ -47,14 +48,30 @@ export class ShopSystem extends System {
             if (data.success) {
                 showNotification(`Transaction successful: ${data.message}`);
                 
+                // Log successful transaction
+                gameLogger.log('Trade', `${data.message}`);
+                
                 // Update player's gold display
                 if (data.newGoldAmount !== undefined) {
                     document.dispatchEvent(new CustomEvent('player-gold-changed', {
                         detail: { gold: data.newGoldAmount }
                     }));
+                    
+                    // Log gold update
+                    if (data.originalGoldAmount !== undefined) {
+                        const goldDifference = data.newGoldAmount - data.originalGoldAmount;
+                        if (goldDifference > 0) {
+                            gameLogger.log('Currency', `Received ${goldDifference} gold`);
+                        } else if (goldDifference < 0) {
+                            gameLogger.log('Currency', `Spent ${Math.abs(goldDifference)} gold`);
+                        }
+                    }
                 }
             } else {
                 showNotification(`Transaction failed: ${data.message}`, 'error');
+                
+                // Log failed transaction
+                gameLogger.log('Trade', `Transaction failed: ${data.message}`, 'error');
             }
         });
     }
@@ -91,6 +108,9 @@ export class ShopSystem extends System {
         
         // Store the currently open shop entity
         this.currentShopEntity = entity;
+        
+        // Log shop interaction
+        gameLogger.log('Trade', `Opened shop: ${shopComponent.name}`);
         
         // Request shop inventory from server
         this.socket.emit('request-shop-inventory', {
@@ -280,6 +300,18 @@ export class ShopSystem extends System {
         
         const shopComponent = this.currentShopEntity.getComponent(ShopComponent);
         
+        // Find the item details from the shop inventory
+        const item = this.shopInventory.find(item => item.id === itemId);
+        if (item) {
+            // Log purchase attempt
+            if (gameLogger.socket && gameLogger.localPlayerId) {
+                gameLogger.log(
+                    'Trade',
+                    `Attempting to buy ${item.name} for ${item.price} gold from ${shopComponent.name}`
+                );
+            }
+        }
+        
         this.socket.emit('shop-buy-item', {
             shopId: shopComponent.shopId,
             itemId: itemId,
@@ -291,6 +323,26 @@ export class ShopSystem extends System {
         if (!this.currentShopEntity) return;
         
         const shopComponent = this.currentShopEntity.getComponent(ShopComponent);
+        
+        // Get player inventory to find item details
+        // This is an approximation as we might not have the most up-to-date inventory
+        // A better approach would be to use a cached copy of the player's inventory
+        const playerInventory = document.querySelector('.player-inventory');
+        if (playerInventory) {
+            const item = document.querySelector(`.player-item [data-slot-index="${slotIndex}"]`);
+            if (item) {
+                const itemName = item.querySelector('h3')?.textContent;
+                const price = parseFloat(item.querySelector('.item-price')?.textContent) || 0;
+                
+                // Log sell attempt
+                if (gameLogger.socket && gameLogger.localPlayerId) {
+                    gameLogger.log(
+                        'Trade',
+                        `Attempting to sell ${quantity}x ${itemName || 'Unknown Item'} for ${price * quantity} gold to ${shopComponent.name}`
+                    );
+                }
+            }
+        }
         
         this.socket.emit('shop-sell-item', {
             shopId: shopComponent.shopId,

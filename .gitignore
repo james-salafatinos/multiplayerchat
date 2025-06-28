@@ -1,7 +1,9 @@
 .env
 /Deliverables
 # See http://help.github.com/ignore-files/ for more about ignoring files.
-
+test.py
+test.txt
+/cards
 /node_modules
 SSL
 notes.txt

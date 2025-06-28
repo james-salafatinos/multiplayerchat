@@ -10,6 +10,7 @@ import { createCubeEntity, createPlayerEntity } from './ecs/entities/index.js';
 import { createBasicItemEntity } from './ecs/entities/index.js';
 import { assetLoader } from './utils/assetLoader.js';
 import { showNotification } from './utils/notifications.js';
+import gameLogger from './utils/gameLogger.js';
 
 import { RenderSystem, RotationSystem, MovementSystem, CharacterSystem } from './ecs/systems/index.js'; // Added CharacterSystem
 import { CameraSystem, ChatBubbleSystem, ContextMenuSystem  } from './ecs/systems/index.js';
@@ -80,6 +81,14 @@ document.addEventListener('DOMContentLoaded', () => {
         document.dispatchEvent(new CustomEvent('player-authenticated', { 
             detail: { username: currentUser.username } 
         }));
+        
+        // Initialize game logger
+        const localPlayerId = getLocalPlayerId();
+        gameLogger.init(socket, localPlayerId, currentUser.username);
+        console.log('Game logger initialized for player:', currentUser.username);
+        
+        // Log a system event to test the game logger
+        gameLogger.logServerEvent('System', 'Game action logging system initialized');
         
         // Enable chat input
         const chatInput = document.getElementById('chat-input');

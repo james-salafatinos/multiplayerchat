@@ -38,6 +38,10 @@ export class CameraSystem extends System {
             this.controls.enablePan = false; // Disable panning to maintain fixed distance
             this.controls.enableZoom = true;
             
+          
+            this.controls.minPolarAngle = 0.2;
+            this.controls.maxPolarAngle = Math.PI * 0.42; // Prevent going under the ground
+            
             // Set damping for smooth camera movement
             this.controls.enableDamping = true;
             this.controls.dampingFactor = 0.1;

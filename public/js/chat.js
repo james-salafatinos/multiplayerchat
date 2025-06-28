@@ -7,12 +7,19 @@ const chatInput = document.getElementById('chat-input');
 const sendButton = document.getElementById('send-button');
 const usernameInput = { value: '' }; // Placeholder for compatibility
 
+// Chat filter tabs
+const filterTabs = document.querySelectorAll('.chat-filter-tab');
+
 // Store chat messages locally
 let chatHistory = [];
+let gameActionHistory = [];
 
 // Track authenticated username
 let authenticatedUsername = '';
 let localPlayerId = null; // Will be set when the player is authenticated
+
+// Current filter mode
+let currentFilterMode = 'all'; // 'all', 'public', or 'game'
 
 /**
  * Initialize the chat system
@@ -36,6 +43,9 @@ export function initChat(socket) {
             timestamp: new Date().toISOString()
         });
     });
+    
+    // Initialize chat filter tab functionality
+    initChatFilterTabs();
     
     // Send message on button click
     sendButton.addEventListener('click', () => {
@@ -80,6 +90,11 @@ export function initChat(socket) {
         }
     });
     
+    // Handle game action messages
+    socket.on('game action', (action) => {
+        addGameActionToChat(action);
+    });
+    
     // Handle chat history from server
     socket.on('chat history', (messages) => {
         chatHistory = messages;
@@ -91,6 +106,14 @@ export function initChat(socket) {
             content: 'Connected to chat. Welcome!'
         };
         addMessageToChat(systemMessage);
+    });
+    
+    // Handle game action history from server
+    socket.on('game action history', (actions) => {
+        gameActionHistory = actions;
+        if (currentFilterMode === 'all' || currentFilterMode === 'game') {
+            renderGameActions();
+        }
     });
 }
 
@@ -128,6 +151,79 @@ function sendMessage(socket) {
 }
 
 /**
+ * Initialize chat filter tab functionality
+ */
+function initChatFilterTabs() {
+    filterTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            // Remove active class from all tabs
+            filterTabs.forEach(t => t.classList.remove('active'));
+            
+            // Add active class to clicked tab
+            tab.classList.add('active');
+            
+            // Set current filter mode
+            currentFilterMode = tab.dataset.filter;
+            
+            // Re-render messages based on filter
+            updateChatDisplay();
+        });
+    });
+}
+
+/**
+ * Update the chat display based on current filter
+ */
+function updateChatDisplay() {
+    // Clear existing messages
+    messageContainer.innerHTML = '';
+    
+    // Show messages based on current filter
+    if (currentFilterMode === 'all' || currentFilterMode === 'public') {
+        // Render regular chat messages
+        chatHistory.forEach(message => {
+            addMessageElementToChat(message, false);
+        });
+    }
+    
+    if (currentFilterMode === 'all' || currentFilterMode === 'game') {
+        // Render game action messages
+        gameActionHistory.forEach(action => {
+            addMessageElementToChat(action, true);
+        });
+    }
+    
+    // Sort all messages by timestamp
+    sortChatMessagesByTimestamp();
+    
+    // Scroll to bottom
+    messageContainer.scrollTop = messageContainer.scrollHeight;
+}
+
+/**
+ * Sort chat messages by timestamp
+ */
+function sortChatMessagesByTimestamp() {
+    // Get all message elements
+    const messageElements = Array.from(messageContainer.children);
+    
+    // Sort by timestamp data attribute
+    messageElements.sort((a, b) => {
+        const timeA = new Date(a.dataset.timestamp || 0);
+        const timeB = new Date(b.dataset.timestamp || 0);
+        return timeA - timeB;
+    });
+    
+    // Clear container
+    messageContainer.innerHTML = '';
+    
+    // Re-append in sorted order
+    messageElements.forEach(element => {
+        messageContainer.appendChild(element);
+    });
+}
+
+/**
  * Add a message to the chat display
  * @param {Object} message - The message object
  */
@@ -137,36 +233,83 @@ function addMessageToChat(message) {
         chatHistory.push(message);
     }
     
+    // Only add to display if it matches current filter
+    if (currentFilterMode === 'all' || currentFilterMode === 'public') {
+        addMessageElementToChat(message, false);
+        
+        // Scroll to bottom
+        messageContainer.scrollTop = messageContainer.scrollHeight;
+    }
+}
+
+/**
+ * Add a game action to the chat
+ * @param {Object} action - The game action object
+ */
+function addGameActionToChat(action) {
+    // Add to game action history
+    gameActionHistory.push(action);
+    
+    // Only add to display if it matches current filter
+    if (currentFilterMode === 'all' || currentFilterMode === 'game') {
+        addMessageElementToChat(action, true);
+        
+        // Scroll to bottom
+        messageContainer.scrollTop = messageContainer.scrollHeight;
+    }
+}
+
+/**
+ * Add message element to chat container
+ * @param {Object} messageObj - The message or action object
+ * @param {boolean} isGameAction - Whether this is a game action message
+ */
+function addMessageElementToChat(messageObj, isGameAction) {
     // Create message element
     const messageElement = document.createElement('div');
+    messageElement.dataset.timestamp = messageObj.timestamp || new Date().toISOString();
     
-    if (message.type === 'system') {
+    if (messageObj.type === 'system') {
         // System message
         messageElement.classList.add('system-message');
-        messageElement.textContent = message.content;
+        messageElement.textContent = messageObj.content;
+    } else if (isGameAction) {
+        // Game action message
+        messageElement.classList.add('game-action');
+        
+        // Format timestamp
+        const timestamp = messageObj.timestamp 
+            ? new Date(messageObj.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        messageElement.innerHTML = `
+            <div class="message-info">
+                ${messageObj.playerName ? `<span class="player-name">${messageObj.playerName}</span>` : ''}
+                <span class="game-action-type">${messageObj.actionType || 'Action'}</span>
+                <span class="timestamp">${timestamp}</span>
+            </div>
+            <div class="message-content">${messageObj.content}</div>
+        `;
     } else {
         // User message
         messageElement.classList.add('message');
         
         // Format timestamp
-        const timestamp = message.timestamp 
-            ? new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        const timestamp = messageObj.timestamp 
+            ? new Date(messageObj.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
         messageElement.innerHTML = `
             <div class="message-info">
-                <span class="username">${message.username}</span>
+                <span class="username">${messageObj.username}</span>
                 <span class="timestamp">${timestamp}</span>
             </div>
-            <div class="message-content">${message.content}</div>
+            <div class="message-content">${messageObj.content}</div>
         `;
     }
     
     // Add to container
     messageContainer.appendChild(messageElement);
-    
-    // Scroll to bottom
-    messageContainer.scrollTop = messageContainer.scrollHeight;
 }
 
 /**
@@ -176,8 +319,24 @@ function renderChatHistory() {
     // Clear existing messages
     messageContainer.innerHTML = '';
     
-    // Render each message
-    chatHistory.forEach(message => {
-        addMessageToChat(message);
-    });
+    // Only render if current filter includes public messages
+    if (currentFilterMode === 'all' || currentFilterMode === 'public') {
+        // Render each message
+        chatHistory.forEach(message => {
+            addMessageElementToChat(message, false);
+        });
+    }
+}
+
+/**
+ * Render game actions
+ */
+function renderGameActions() {
+    // Only render if current filter includes game actions
+    if (currentFilterMode === 'all' || currentFilterMode === 'game') {
+        // Render each action
+        gameActionHistory.forEach(action => {
+            addMessageElementToChat(action, true);
+        });
+    }
 }

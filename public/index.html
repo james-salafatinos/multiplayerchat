@@ -23,9 +23,13 @@
                 <div id="user-count">0 users online</div>
                 <button id="logout-button" class="btn-logout">Logout</button>
             </div>
+            <div id="chat-filter-tabs">
+                <button id="filter-all" class="chat-filter-tab active" data-filter="all">All Chat</button>
+                <button id="filter-public" class="chat-filter-tab" data-filter="public">Public Chat</button>
+                <button id="filter-game" class="chat-filter-tab" data-filter="game">Game Actions</button>
+            </div>
             <div id="chat-messages"></div>
             <div id="chat-input-container">
-              
                 <textarea id="chat-input" placeholder="Type a message..." rows="1" disabled></textarea>
                 <button id="send-button" disabled>Send</button>
             </div>

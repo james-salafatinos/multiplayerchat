@@ -3,6 +3,7 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { FBXLoader } from '../modules/FBXLoader.js';
 
 /**
  * Utility class for loading and caching 3D assets
@@ -121,3 +122,77 @@ class AssetLoader {
 const assetLoader = new AssetLoader();
 
 export { assetLoader };
+
+// --- Unified loader helpers (GLTF & FBX) ---
+// Shared loading manager for progress & caching
+const _loadingManager = new THREE.LoadingManager();
+
+const _gltfLoader = new GLTFLoader(_loadingManager);
+const _fbxLoader  = new FBXLoader(_loadingManager);
+
+const _modelCache = new Map();
+
+/**
+ * Internal GLTF loader
+ */
+async function _loadGLTF(path, { scale = 1 } = {}) {
+  if (_modelCache.has(path)) {
+    return _modelCache.get(path);
+  }
+  const gltf = await new Promise((res, rej) =>
+    _gltfLoader.load(path, res, undefined, rej)
+  );
+  const obj = (gltf.scene || gltf).clone(true);
+  obj.scale.setScalar(scale);
+  _modelCache.set(path, obj);
+  return obj;
+}
+
+/**
+ * Internal FBX loader
+ */
+async function _loadFBX(path, { scale = 1 } = {}) {
+  if (_modelCache.has(path)) {
+    return _modelCache.get(path);
+  }
+  const obj = await new Promise((res, rej) =>
+    _fbxLoader.load(path, res, undefined, rej)
+  );
+  obj.scale.setScalar(scale);
+  _modelCache.set(path, obj);
+  return obj;
+}
+
+/**
+ * Public unified model loader
+ */
+export async function loadModel(path, opts = {}) {
+  if (path.toLowerCase().endsWith('.fbx')) {
+    return _loadFBX(path, opts);
+  }
+  return _loadGLTF(path, opts);
+}
+
+/**
+ * Deep clone helper (preserves skeletons, materials, etc.)
+ */
+export function clone(object3D) {
+  return object3D.clone(true);
+}
+
+/**
+ * Generates a simple fallback mesh to show when loading fails.
+ */
+export function makeFallback({ color = 0xff00ff, size = 0.5 } = {}) {
+  return new THREE.Mesh(
+    new THREE.BoxGeometry(size, size, size),
+    new THREE.MeshStandardMaterial({ color })
+  );
+}
+
+/**
+ * Preload a set of models in the background.
+ */
+export function preload(paths = []) {
+  paths.forEach((p) => loadModel(p).catch(console.warn));
+}

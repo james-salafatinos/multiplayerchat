@@ -7,7 +7,7 @@ import { getContextMenuManager } from '../../contextMenu.js';
 import { getScene, getCamera } from '../../three-setup.js';
 import * as THREE from 'three';
 import { showNotification } from '../../utils/notifications.js';
-;
+import gameLogger from '../../utils/gameLogger.js';
 
 /**
  * System for handling resources like rocks and trees
@@ -225,6 +225,9 @@ export class ResourceSystem extends System {
                         // Show message to player
                         // (This is a placeholder - you might want to implement a proper info display)
                         alert(message);
+                        
+                        // Log the examine action
+                        gameLogger.logResourceAction(resourceComp.type, `examined ${resourceComp.type}`, {});
                     }
                 });
 
@@ -294,6 +297,9 @@ export class ResourceSystem extends System {
         });
         console.log('Resource interaction event emitted');
         
+        // Log the resource action to game logger
+        gameLogger.logResourceAction(resourceType, `started ${action}ing ${resourceType}`, {});
+        
         // Start local harvest progress tracking
         const harvestInfo = {
             startTime: Date.now(),
@@ -303,6 +309,15 @@ export class ResourceSystem extends System {
         };
 
         this.activeHarvests.set(entityId, harvestInfo);
+
+        // Log the resource gathering action to the game action log
+        const actionText = action === 'mine' ? 'mining' : 'chopping';
+        const resourceText = resourceType === 'rock' ? 'rock' : 'tree';
+        
+        // Only log if gameLogger is initialized
+        if (gameLogger.socket && gameLogger.localPlayerId) {
+            gameLogger.logResourceAction(resourceText, actionText);
+        }
 
         // Update resource visual state if we have a ResourceComponent
         if (resourceComp) {
@@ -392,6 +407,11 @@ export class ResourceSystem extends System {
             }
             
             console.log( 'handleResourceUpdate', `Updated resource ${resourceId} visual state to ${resourceComp.visualState}`);
+            
+            // Log resource depletion if applicable
+            if (resourceComp.visualState === 'depleted') {
+                gameLogger.logResourceAction(resourceComp.type, `depleted ${resourceComp.type}`, {});
+            }
         }
     }
 
@@ -421,8 +441,17 @@ export class ResourceSystem extends System {
             // Display notification to the player
             showNotification(`Harvested ${itemMessages}`, 'success');
             
+            // Log the item receipt to game action log
+            if (gameLogger.socket && gameLogger.localPlayerId) {
+                items.forEach(item => {
+                    gameLogger.logItemReceived(item.itemId, item.quantity, { source: 'harvesting' });
+                });
+            }
+            
             if (experience) {
                 showNotification(`Gained ${experience} XP`, 'info');
+                // Log XP gain to game action log
+                gameLogger.log('Experience', `Gained ${experience} XP`);
             }
         } else {
             console.log('handleHarvestComplete', 'No items received from harvest');
@@ -452,6 +481,9 @@ export class ResourceSystem extends System {
 
         // Display error notification to the player
         showNotification(error, 'error');
+        
+        // Log the error to game action log
+        gameLogger.log('Harvesting', `Failed: ${error}`, 'error');
     }
 
     /**

@@ -12,11 +12,10 @@ import {
     InteractableComponent
 } from '../components/index.js';
 import { getSocket } from '../../network.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { loadModel, clone, makeFallback } from '../../utils/assetLoader.js';
 ;
 
-// Create a loader instance to be reused
-const gltfLoader = new GLTFLoader();
+
 
 /**
  * Create an item entity that can be picked up
@@ -69,99 +68,38 @@ export function createItemEntity(world, options = {}) {
         gltfPath: config.gltfPath
     }));
     
-    // Try to load GLTF/GLB model if path is provided
+    // Try to load model via centralised loader if path is provided
     if (config.gltfPath) {
-        // Make sure we're using the correct path format
+        // Normalise relative path
         let modelPath = config.gltfPath;
-        
-        // Remove any leading slash as it might cause issues
-        if (modelPath.startsWith('/')) {
-            modelPath = modelPath.substring(1);
-        }
-        
-        // Ensure the path is relative to the root
-        if (!modelPath.startsWith('models/') && !modelPath.startsWith('/models/')) {
+        if (modelPath.startsWith('/')) modelPath = modelPath.slice(1);
+        if (!modelPath.startsWith('models/')) {
             modelPath = `models/${modelPath}`;
         }
-        
-        // Fix file extension if needed - ensure it's .glb not .gltf
-        if (modelPath.endsWith('.gltf')) {
-            modelPath = modelPath.replace('.gltf', '.glb');
-        }
-        
-        // console.log(`Attempting to load 3D model from: ${modelPath}`);
-        
-        // Check if file exists by making a HEAD request
-        fetch(modelPath, { method: 'HEAD' })
-            .then(response => {
-                if (response.ok) {
-                    // console.log(`Model file exists at path: ${modelPath}`);
-                } else {
-                    // console.error(`Model file NOT found at path: ${modelPath} (Status: ${response.status})`);
-                    // Try alternative path if file not found
-                    const altPath = modelPath.replace('.glb', '.gltf');
-                    // console.log(`Trying alternative path: ${altPath}`);
-                    return fetch(altPath, { method: 'HEAD' });
-                }
-            })
-            .then(response => {
-                if (response && response.ok) {
-                    // console.log(`Model file found at alternative path: ${modelPath.replace('.glb', '.gltf')}`);
-                    // Update the path for loading
-                    modelPath = modelPath.replace('.glb', '.gltf');
-                }
-            })
-            .catch(error => {
-                console.error(`Error checking model file: ${error}`);
+
+        loadModel(modelPath, { scale: 1 })
+          .then((base) => {
+            // Remove existing children
+            itemGroup.clear();
+            itemGroup.add(clone(base));
+            // Fit model inside bounding box based on config.size
+            const box = new THREE.Box3().setFromObject(itemGroup);
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const scaleFactor = config.size / maxDim;
+            itemGroup.scale.setScalar(scaleFactor);
+            // Propagate entityId for raycasting
+            itemGroup.traverse((c) => {
+              if (c.isMesh) c.userData.entityId = entity.id;
             });
-        
-        // Add a small delay to ensure fetch completes before loading
-        setTimeout(() => {
-            // console.log(`Loading model from: ${modelPath}`);
-            gltfLoader.load(
-                modelPath,
-                (gltf) => {
-                    // Success callback
-                    // console.log(`Loaded model for item ${config.name} from ${config.gltfPath}`);
-                    
-                    // Clear any existing meshes
-                    while (itemGroup.children.length > 0) {
-                        itemGroup.remove(itemGroup.children[0]);
-                    }
-                    
-                    // Add the loaded model to the group
-                    itemGroup.add(gltf.scene);
-                    
-                    // Scale the model to appropriate size
-                    const box = new THREE.Box3().setFromObject(gltf.scene);
-                    const size = box.getSize(new THREE.Vector3());
-                    const maxDim = Math.max(size.x, size.y, size.z);
-                    const scale = config.size / maxDim;
-                    gltf.scene.scale.set(scale, scale, scale);
-                    
-                    // Ensure all meshes in the model have the entity ID for raycasting
-                    gltf.scene.traverse((child) => {
-                        if (child.isMesh) {
-                            child.userData.entityId = entity.id;
-                        }
-                    });
-                },
-                (xhr) => {
-                    // Progress callback
-                    console.log(`${(xhr.loaded / xhr.total * 100)}% loaded for ${config.name}`);
-                },
-                (error) => {
-                    // Error callback
-                    console.error(`Error loading model for ${config.name}:`, error);
-                    
-                    // Fallback to a simple box if model loading fails
-                    createFallbackMesh(itemGroup, config, entity.id);
-                }
-            );
-        }, 500); // 500ms delay to ensure fetch completes
+          })
+          .catch((err) => {
+            console.error('Model load failed, using fallback', err);
+            itemGroup.add(makeFallback({ color: config.color, size: config.size }));
+          });
     } else {
-        // No GLTF path, use a simple box
-        createFallbackMesh(itemGroup, config, entity.id);
+        // No model path specified – use fallback cube
+        itemGroup.add(makeFallback({ color: config.color, size: config.size }));
     }
     
     // Interactable component
@@ -196,27 +134,16 @@ export function createItemEntity(world, options = {}) {
     return entity;
 }
 
-
 /**
- * Create a fallback mesh for items when GLTF loading fails or is not available
+ * (legacy) createFallbackMesh kept for backward compatibility but now delegates to makeFallback
  * @param {THREE.Group} group - The group to add the mesh to
  * @param {Object} config - The item configuration
  * @param {string} entityId - The entity ID to store in userData
  */
 function createFallbackMesh(group, config, entityId) {
-    // Create geometry, material, and mesh for the item
-    const geometry = new THREE.BoxGeometry(config.size, config.size, config.size);
-    const material = new THREE.MeshStandardMaterial({ 
-        color: config.color,
-        roughness: 0.5,
-        metalness: 0.5,
-        emissive: new THREE.Color(config.color).multiplyScalar(0.2) // Slight glow effect
-    });
-    const mesh = new THREE.Mesh(geometry, material);
-    
-    // Store entity ID in mesh's userData for raycasting
+    const mesh = makeFallback({ color: config.color, size: config.size });
     mesh.userData.entityId = entityId;
-    
-    // Add mesh to group
     group.add(mesh);
 }
+
+
